@@ -1,7 +1,5 @@
 pub mod v1_20_4;
 
-use crate::{Packet, PacketDirection, PacketState};
-
 /// Define protocol macro
 #[macro_export]
 macro_rules! define_protocol {
@@ -14,27 +12,25 @@ macro_rules! define_protocol {
             }),* $(,)?
         }),* $(,)?
     }) => {
-        use crate::*;
-
-        #[derive(Debug, Clone, PartialEq)]
-        pub struct $($($($name)*)*)* {
-            $($($(
+        $($($(
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct $name {
             $(pub $fname: $ftype),*
-            )*)*)*
         }
 
-        impl Packet for $($($($name)*)*)* {
-            const ID: i32 = $($($($id)*)*)*;
-            const NAME: &'static str = $($($(stringify!($name))*)*)*;
-            const DIRECTION: $crate::PacketDirection = $($(PacketDirection::$direction)*)*;
-            const STATE: $crate::PacketState = $(PacketState::$state)*;
+        impl Packet for $name {
+            const ID: i32 = $id;
+            const NAME: &'static str = stringify!($name);
+            const DIRECTION: PacketDirection = PacketDirection::$direction;
+            const STATE: PacketState = PacketState::$state;
         }
-    }
+        )*)*)*
+    };
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::protocol::*;
 
     define_protocol!(765 {
         Handshaking {
@@ -44,6 +40,23 @@ mod tests {
                     host: String,
                     port: u16,
                     next: u8,
+                },
+            },
+        },
+
+        Status {
+            Serverbound {
+                0x00 StatusRequest {},
+                0x01 PingRequest {
+                    payload: i64,
+                }
+            },
+            Clientbound {
+                0x00 StatusResponse {
+                    response: String,
+                },
+                0x01 PingResponse {
+                    payload: i64,
                 },
             },
         },

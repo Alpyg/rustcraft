@@ -7,7 +7,7 @@ mkShell rec {
     pkg-config
   ];
   buildInputs = [
-    udev alsa-lib vulkan-loader cmake rustfmt
+    udev alsa-lib vulkan-loader cmake rustfmt jdk17
     xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr # To use the x11 feature
     libxkbcommon wayland # To use the wayland feature
   ];
