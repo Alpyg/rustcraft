@@ -1,5 +1,3 @@
-pub mod v1_20_4;
-
 /// Define protocol macro
 #[macro_export]
 macro_rules! define_protocol {
@@ -7,7 +5,7 @@ macro_rules! define_protocol {
         $($state:ident {
             $($direction:ident {
                 $($id:literal $name:ident {
-                    $($fname:ident: $ftype:ty),* $(,)?
+                    $($fname:ident: $ftype:ty) ,* $(,)?
                 }),* $(,)?
             }),* $(,)?
         }),* $(,)?
@@ -30,7 +28,7 @@ macro_rules! define_protocol {
 
 #[cfg(test)]
 mod tests {
-    use crate::protocol::*;
+    use crate::*;
 
     define_protocol!(765 {
         Handshaking {

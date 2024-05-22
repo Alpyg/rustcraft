@@ -1,0 +1,13 @@
+[package]
+name = "protocol"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+aes.workspace = true
+anyhow.workspace = true
+bevy.workspace = true
+bytes.workspace = true
+cfb8.workspace = true
+thiserror.workspace = true
+uuid.workspace = true

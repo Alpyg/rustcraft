@@ -5,7 +5,7 @@ use std::str;
 use bevy::prelude::*;
 use bytes::{BufMut, Bytes, BytesMut};
 
-use crate::protocol::{types::VarInt, Decode, Encode};
+use protocol::{Decode, Encode, VarInt};
 
 #[derive(Resource, Debug)]
 pub struct ServerConnection {

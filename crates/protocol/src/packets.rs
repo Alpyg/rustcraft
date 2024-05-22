@@ -1,9 +1,6 @@
 use uuid::Uuid;
 
-#[allow(dead_code)]
-use crate::define_protocol;
-
-use crate::protocol::{profile::*, types::*, *};
+use crate::{define_protocol, types::*, Packet, PacketDirection, PacketState};
 
 define_protocol!(765 {
     Handshaking {
