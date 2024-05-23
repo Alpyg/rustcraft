@@ -1,12 +1,24 @@
-use bytes::{Bytes, BytesMut};
+use anyhow::Context;
+use bytes::BytesMut;
 
+use protocol_derive::{Decode, Encode};
+
+pub mod __private {
+    pub use anyhow::{anyhow, bail, ensure, Context, Result};
+
+    pub use crate::{Decode, Encode, Packet, VarInt};
+}
+
+mod impls;
 mod macros;
-mod packets;
+pub mod packets;
 mod plugin;
-mod types;
 
+pub use impls::*;
 pub use plugin::*;
-pub use types::*;
+//pub use protocol_derive::{Decode, Encode};
+
+extern crate self as protocol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PacketDirection {
@@ -55,12 +67,28 @@ pub trait Packet: std::fmt::Debug {
     const DIRECTION: PacketDirection;
 
     const STATE: PacketState;
+
+    fn encode_with_id(&self, wtr: &mut BytesMut) -> anyhow::Result<()>
+    where
+        Self: Encode,
+    {
+        VarInt(Self::ID)
+            .encode(wtr)
+            .context("failed to encode packet ID")?;
+        self.encode(wtr)
+    }
 }
 
 pub trait Encode {
-    fn encode(&self, wtr: &mut BytesMut);
+    fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()>;
 }
 
-pub trait Decode: Sized {
-    fn decode(rdr: &mut Bytes) -> anyhow::Result<Self>;
+pub trait Decode<'a>: Sized {
+    fn decode(rdr: &mut &'a [u8]) -> anyhow::Result<Self>;
+}
+
+#[derive(Encode)]
+pub struct TestPacket {
+    pub a: u8,
+    pub b: u8,
 }

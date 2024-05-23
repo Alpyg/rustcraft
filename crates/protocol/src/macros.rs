@@ -10,8 +10,10 @@ macro_rules! define_protocol {
             }),* $(,)?
         }),* $(,)?
     }) => {
+        use protocol_derive::{Encode};
+
         $($($(
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Encode ,Debug, Clone, PartialEq, Eq)]
         pub struct $name {
             $(pub $fname: $ftype),*
         }

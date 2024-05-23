@@ -1,21 +1,37 @@
+use std::default::Default;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::str;
 
 use bevy::prelude::*;
-use bytes::{BufMut, Bytes, BytesMut};
+use bevy_inspector_egui::prelude::*;
+use bytes::{Bytes, BytesMut};
 
-use protocol::{Decode, Encode, VarInt};
+use protocol::{packets::*, Decode, Encode, Packet, VarInt};
 
-#[derive(Resource, Debug)]
+#[derive(Reflect, Resource, InspectorOptions, Debug)]
+#[reflect(Resource, InspectorOptions)]
 pub struct ServerConnection {
-    pub server: String,
-    pub stream: TcpStream,
-}
+    pub host: String,
+    #[reflect(ignore)]
+    pub stream: Option<TcpStream>, // Option for reflect to work
+} //
 
 impl ServerConnection {
-    fn new(server: String, stream: TcpStream) -> Self {
-        ServerConnection { server, stream }
+    fn new(host: String, stream: TcpStream) -> Self {
+        ServerConnection {
+            host,
+            stream: Some(stream),
+        }
+    }
+}
+
+impl Default for ServerConnection {
+    fn default() -> Self {
+        Self {
+            host: "".to_owned(),
+            stream: None,
+        }
     }
 }
 
@@ -23,6 +39,7 @@ pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<ServerConnection>();
         app.add_systems(
             Startup,
             status_request.run_if(resource_exists::<ServerConnection>),
@@ -36,26 +53,30 @@ impl Plugin for NetworkPlugin {
 }
 
 /// TODO: move this to an async method so it doesnt block
-fn status_request(_commands: Commands, mut connection: ResMut<ServerConnection>) {
+fn status_request(_commands: Commands, connection: ResMut<ServerConnection>) {
+    let mut stream = connection.stream.as_ref().unwrap();
     let mut buf = BytesMut::new();
     // handshake
-    VarInt(16).encode(&mut buf); // length
-    VarInt(0).encode(&mut buf); // id 1
-    VarInt(765).encode(&mut buf); // protocol version 2
-    VarInt(9).encode(&mut buf); // string len 1
-    buf.put("localhost".as_bytes()); // host 9
-    buf.put_u16(25565); // port 2
-    VarInt(1).encode(&mut buf); // next 1
+    let handshake = Handshake {
+        protocol_version: VarInt(765),
+        host: "localhost".to_owned(),
+        port: 25565,
+        next: 1,
+    };
+
+    let _ = VarInt(16).encode(&mut buf); // length
+    let _ = VarInt(Handshake::ID).encode(&mut buf); // id
+    let _ = handshake.encode(&mut buf);
 
     // status
-    VarInt(1).encode(&mut buf); // length
-    VarInt(0).encode(&mut buf); // id 1
+    let _ = VarInt(1).encode(&mut buf); // length
+    let _ = VarInt(0).encode(&mut buf); // id 1
 
-    connection.stream.write(&buf).unwrap();
-    let _ = connection.stream.flush().unwrap();
+    stream.write_all(&buf).unwrap();
+    stream.flush().unwrap();
 
     let mut buf2 = [0; 512];
-    let _ = connection.stream.read(&mut buf2[..]).unwrap();
+    let _len = stream.read(&mut buf2[..]).unwrap();
 
     let mut buf2 = Bytes::copy_from_slice(&buf2);
     let _packet_len = VarInt::decode(&mut buf2).unwrap().0;

@@ -1,15 +1,16 @@
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 
 use crate::{Decode, Encode};
 
 impl Encode for bool {
-    fn encode(&self, buf: &mut BytesMut) {
+    fn encode(&self, buf: &mut BytesMut) -> anyhow::Result<()> {
         buf.put_u8(*self as u8);
+        Ok(())
     }
 }
 
-impl Decode for bool {
-    fn decode(buf: &mut Bytes) -> anyhow::Result<Self> {
+impl Decode<'_> for bool {
+    fn decode(buf: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(buf.get_u8() != 0)
     }
 }
@@ -17,13 +18,14 @@ impl Decode for bool {
 macro_rules! define_primitive {
     ($type:ty, $read:ident, $write:ident) => {
         impl Encode for $type {
-            fn encode(&self, buf: &mut BytesMut) {
-                buf.$write(*self)
+            fn encode(&self, buf: &mut BytesMut) -> anyhow::Result<()> {
+                buf.$write(*self);
+                Ok(())
             }
         }
 
-        impl Decode for $type {
-            fn decode(buf: &mut Bytes) -> anyhow::Result<Self> {
+        impl Decode<'_> for $type {
+            fn decode(buf: &mut &[u8]) -> anyhow::Result<Self> {
                 Ok(buf.$read())
             }
         }
@@ -54,11 +56,11 @@ mod tests {
         let c: u64 = 0x1122334455667788;
         let mut buf = BytesMut::new();
 
-        a.encode(&mut buf);
-        b.encode(&mut buf);
-        c.encode(&mut buf);
+        let _ = a.encode(&mut buf);
+        let _ = b.encode(&mut buf);
+        let _ = c.encode(&mut buf);
 
-        let mut buf: Bytes = buf.freeze();
+        let mut buf = &buf.freeze()[..];
 
         assert_eq!(0x01, u8::decode(&mut buf).unwrap());
         assert_eq!(0x1122, u16::decode(&mut buf).unwrap());

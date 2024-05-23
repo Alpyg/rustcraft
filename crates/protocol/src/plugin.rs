@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use crate::packets::Handshake;
-
 pub struct ProtocolPlugin;
 
 impl Plugin for ProtocolPlugin {
@@ -10,11 +8,4 @@ impl Plugin for ProtocolPlugin {
     }
 }
 
-fn test() {
-    let _packet = Handshake {
-        protocol_version: 765,
-        host: "localhost".to_owned(),
-        port: 25565,
-        next: 1,
-    };
-}
+fn test() {}
