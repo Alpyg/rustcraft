@@ -1,37 +1,36 @@
+#![feature(array_try_from_fn)]
+
 use anyhow::Context;
 use bytes::BytesMut;
-
-use protocol_derive::{Decode, Encode};
 
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::{Decode, Encode, Packet, VarInt};
+    pub use crate::{Decode, Encode, Packet, PacketSide, PacketState, VarInt};
 }
 
 mod impls;
-mod macros;
 pub mod packets;
 mod plugin;
 
 pub use impls::*;
 pub use plugin::*;
-//pub use protocol_derive::{Decode, Encode};
+use protocol_derive::{define_protocol, Decode, Encode, Packet};
 
 extern crate self as protocol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PacketDirection {
-    Clientbound,
-    Serverbound,
+pub enum PacketSide {
+    Client,
+    Server,
 }
 
-impl PacketDirection {
+impl PacketSide {
     pub fn opposite(&self) -> Self {
-        use PacketDirection::*;
+        use PacketSide::*;
         match self {
-            Clientbound => Serverbound,
-            Serverbound => Clientbound,
+            Client => Server,
+            Server => Client,
         }
     }
 }
@@ -64,7 +63,7 @@ pub trait Packet: std::fmt::Debug {
 
     const NAME: &'static str;
 
-    const DIRECTION: PacketDirection;
+    const SIDE: PacketSide;
 
     const STATE: PacketState;
 
@@ -81,13 +80,25 @@ pub trait Packet: std::fmt::Debug {
 
 pub trait Encode {
     fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()>;
+
+    fn encode_slice(slice: &[Self], wtr: &mut BytesMut) -> anyhow::Result<()>
+    where
+        Self: Sized,
+    {
+        for v in slice {
+            v.encode(wtr)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub trait Decode<'a>: Sized {
     fn decode(rdr: &mut &'a [u8]) -> anyhow::Result<Self>;
 }
 
-#[derive(Encode)]
+#[derive(Encode, Decode, Packet, Debug)]
+#[packet(id = 0x01, side = PacketSide::Client, state = PacketState::Play)]
 pub struct TestPacket {
     pub a: u8,
     pub b: u8,

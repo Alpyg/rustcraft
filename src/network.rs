@@ -5,7 +5,7 @@ use std::str;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 
 use protocol::{packets::*, Decode, Encode, Packet, VarInt};
 
@@ -57,30 +57,30 @@ fn status_request(_commands: Commands, connection: ResMut<ServerConnection>) {
     let mut stream = connection.stream.as_ref().unwrap();
     let mut buf = BytesMut::new();
     // handshake
-    let handshake = Handshake {
+    VarInt(16).encode(&mut buf).unwrap(); // length
+    Handshake {
         protocol_version: VarInt(765),
-        host: "localhost".to_owned(),
+        host: "localhost",
         port: 25565,
         next: 1,
-    };
-
-    let _ = VarInt(16).encode(&mut buf); // length
-    let _ = VarInt(Handshake::ID).encode(&mut buf); // id
-    let _ = handshake.encode(&mut buf);
+    }
+    .encode_with_id(&mut buf)
+    .unwrap();
 
     // status
-    let _ = VarInt(1).encode(&mut buf); // length
-    let _ = VarInt(0).encode(&mut buf); // id 1
+    VarInt(1).encode(&mut buf).unwrap(); // length
+    StatusRequest {}.encode_with_id(&mut buf).unwrap();
 
     stream.write_all(&buf).unwrap();
     stream.flush().unwrap();
 
-    let mut buf2 = [0; 512];
-    let _len = stream.read(&mut buf2[..]).unwrap();
+    let mut buf2: [u8; 512] = [0; 512];
+    let _len = stream.read(&mut buf2).unwrap();
 
-    let mut buf2 = Bytes::copy_from_slice(&buf2);
-    let _packet_len = VarInt::decode(&mut buf2).unwrap().0;
-    let _packet_id = VarInt::decode(&mut buf2).unwrap();
-    let response_len = VarInt::decode(&mut buf2).unwrap().0 as usize;
-    println!("{}", str::from_utf8(&buf2[0..(response_len)]).unwrap());
+    let buf2 = &mut &buf2[..];
+
+    let _packet_len = VarInt::decode(buf2).unwrap().0;
+    let _packet_id = VarInt::decode(buf2).unwrap();
+    let status_response = StatusResponse::decode(buf2).unwrap();
+    println!("{:?}", status_response);
 }

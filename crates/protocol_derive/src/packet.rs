@@ -1,8 +1,7 @@
-use heck::ToShoutySnakeCase;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Result};
+use syn::{parse2, Attribute, DeriveInput, Error, Expr, LitInt, LitStr, Result};
 
 use crate::add_trait_bounds;
 
@@ -19,17 +18,13 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
         name.to_string()
     };
 
-    let packet_id: Expr = match packet_attr.id {
-        Some(expr) => expr,
-        None => match syn::parse_str::<Ident>(&name_str.to_shouty_snake_case()) {
-            Ok(ident) => parse_quote!(::valence_protocol::packet_id::#ident),
-            Err(_) => {
-                return Err(Error::new(
-                    packet_attr.span,
-                    "missing valid `id = ...` value from `packet` attr",
-                ))
-            }
-        },
+    let id = if let Some(id_attr) = packet_attr.id {
+        id_attr
+    } else {
+        return Err(Error::new(
+            packet_attr.span,
+            "missing `id = i32` value from `packet` attribute",
+        ));
     };
 
     add_trait_bounds(&mut input.generics, quote!(::std::fmt::Debug));
@@ -38,10 +33,6 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     let side = if let Some(side_attr) = packet_attr.side {
         side_attr
-    } else if name_str.to_lowercase().ends_with("s2c") {
-        parse_quote!(::valence_protocol::PacketSide::Clientbound)
-    } else if name_str.to_lowercase().ends_with("c2s") {
-        parse_quote!(::valence_protocol::PacketSide::Serverbound)
     } else {
         return Err(Error::new(
             packet_attr.span,
@@ -49,18 +40,23 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
         ));
     };
 
-    let state = packet_attr
-        .state
-        .unwrap_or_else(|| parse_quote!(::valence_protocol::PacketState::Play));
+    let state = if let Some(state_attr) = packet_attr.state {
+        state_attr
+    } else {
+        return Err(Error::new(
+            packet_attr.span,
+            "missing `state = PacketState::...` value from `packet` attribute",
+        ));
+    };
 
     Ok(quote! {
-        impl #impl_generics ::valence_protocol::__private::Packet for #name #ty_generics
+        impl #impl_generics crate::__private::Packet for #name #ty_generics
         #where_clause
         {
-            const ID: i32 = #packet_id;
+            const ID: i32 = #id;
             const NAME: &'static str = #name_str;
-            const SIDE: ::valence_protocol::PacketSide = #side;
-            const STATE: ::valence_protocol::PacketState = #state;
+            const SIDE: crate::__private::PacketSide = #side;
+            const STATE: crate::__private::PacketState = #state;
         }
     })
 }
