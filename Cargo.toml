@@ -19,6 +19,7 @@ bytes.workspace = true
 derive_more.workspace = true
 uuid.workspace = true
 protocol.workspace = true
+mem_macros.workspace = true
 
 
 [workspace.package]
@@ -44,6 +45,7 @@ derive_more = "0.99.17"
 flate2 = "1.0.30"
 heck = "0.5.0"
 indexmap = "2.2.6"
+mem_macros = "1.0.1"
 proc-macro2 = "1.0.83"
 quote = "1.0.36"
 rand = "0.8.5"

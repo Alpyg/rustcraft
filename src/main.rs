@@ -4,9 +4,11 @@ use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin
 
 use network::NetworkPlugin;
 use protocol::ProtocolPlugin;
+use states::AppState;
 
 mod network;
 mod prelude;
+mod states;
 
 fn main() {
     let mut app = App::new();
@@ -29,6 +31,8 @@ fn main() {
     app.add_plugins(RapierDebugRenderPlugin::default());
 
     app.add_plugins((NetworkPlugin, ProtocolPlugin));
+
+    app.insert_state(AppState::InGame);
 
     app.run();
 }

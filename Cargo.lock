@@ -2921,6 +2921,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mem_macros"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6533f8d40a489f5eba44718880fe6c88d38deff1f12398930462c1246a2aa017"
+
+[[package]]
 name = "memchr"
 version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3614,6 +3620,7 @@ dependencies = [
  "bytes",
  "cfb8",
  "derive_more",
+ "mem_macros",
  "protocol_derive",
  "thiserror",
  "uuid",
@@ -3842,6 +3849,7 @@ dependencies = [
  "bevy_rapier3d",
  "bytes",
  "derive_more",
+ "mem_macros",
  "protocol",
  "uuid",
 ]

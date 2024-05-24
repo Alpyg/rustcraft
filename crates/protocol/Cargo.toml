@@ -14,3 +14,4 @@ cfb8.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 protocol_derive.workspace = true
+mem_macros.workspace = true

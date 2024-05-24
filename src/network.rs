@@ -1,13 +1,11 @@
-use std::default::Default;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::str;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
-use bytes::BytesMut;
 
-use protocol::{packets::*, Decode, Encode, Packet, VarInt};
+use protocol::{packets::*, PacketDecoder, PacketEncoder, VarInt};
 
 #[derive(Reflect, Resource, InspectorOptions, Debug)]
 #[reflect(Resource, InspectorOptions)]
@@ -53,34 +51,36 @@ impl Plugin for NetworkPlugin {
 }
 
 /// TODO: move this to an async method so it doesnt block
-fn status_request(_commands: Commands, connection: ResMut<ServerConnection>) {
+fn status_request(
+    _commands: Commands,
+    mut encoder: ResMut<PacketEncoder>,
+    mut decoder: ResMut<PacketDecoder>,
+    connection: ResMut<ServerConnection>,
+) {
     let mut stream = connection.stream.as_ref().unwrap();
-    let mut buf = BytesMut::new();
+
     // handshake
-    VarInt(16).encode(&mut buf).unwrap(); // length
-    Handshake {
-        protocol_version: VarInt(765),
-        host: "localhost",
-        port: 25565,
-        next: 1,
-    }
-    .encode_with_id(&mut buf)
-    .unwrap();
+    encoder
+        .append_packet(&Handshake {
+            protocol_version: VarInt(765),
+            host: "localhost",
+            port: 25565,
+            next: 1,
+        })
+        .unwrap();
 
     // status
-    VarInt(1).encode(&mut buf).unwrap(); // length
-    StatusRequest {}.encode_with_id(&mut buf).unwrap();
+    encoder.append_packet(&StatusRequest {}).unwrap();
 
-    stream.write_all(&buf).unwrap();
+    stream.write_all(&encoder.take()).unwrap();
     stream.flush().unwrap();
 
-    let mut buf2: [u8; 512] = [0; 512];
-    let _len = stream.read(&mut buf2).unwrap();
+    let mut response_buf: [u8; 512] = [0; 512];
+    let _len = stream.read(&mut response_buf).unwrap();
 
-    let buf2 = &mut &buf2[..];
+    decoder.queue_slice(&response_buf);
 
-    let _packet_len = VarInt::decode(buf2).unwrap().0;
-    let _packet_id = VarInt::decode(buf2).unwrap();
-    let status_response = StatusResponse::decode(buf2).unwrap();
-    println!("{:?}", status_response);
+    let pkt_frame = decoder.try_next_packet().unwrap().unwrap();
+    let status_response = pkt_frame.decode::<StatusResponse>().unwrap();
+    println!("{:?}", &status_response);
 }

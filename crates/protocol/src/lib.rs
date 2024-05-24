@@ -9,15 +9,21 @@ pub mod __private {
     pub use crate::{Decode, Encode, Packet, PacketSide, PacketState, VarInt};
 }
 
+mod decoder;
+mod encoder;
 mod impls;
 pub mod packets;
 mod plugin;
 
+pub use decoder::*;
+pub use encoder::*;
 pub use impls::*;
 pub use plugin::*;
 use protocol_derive::{define_protocol, Decode, Encode, Packet};
 
 extern crate self as protocol;
+
+pub const MAX_PACKET_SIZE: i32 = 2097152;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PacketSide {
@@ -95,11 +101,4 @@ pub trait Encode {
 
 pub trait Decode<'a>: Sized {
     fn decode(rdr: &mut &'a [u8]) -> anyhow::Result<Self>;
-}
-
-#[derive(Encode, Decode, Packet, Debug)]
-#[packet(id = 0x01, side = PacketSide::Client, state = PacketState::Play)]
-pub struct TestPacket {
-    pub a: u8,
-    pub b: u8,
 }

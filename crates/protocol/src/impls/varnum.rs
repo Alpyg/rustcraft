@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use bytes::{Buf, BufMut, BytesMut};
+use mem_macros::size_of;
 
 use crate::{Decode, Encode};
 
@@ -8,6 +9,15 @@ macro_rules! define_varnum {
         #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq)]
 
         pub struct $name(pub $type);
+
+        impl $name {
+            pub fn size(self) -> usize {
+                match self.0 {
+                    0 => 1,
+                    n => (size_of!($container_type) * 8 - 1 - n.leading_zeros() as usize) / 7 + 1,
+                }
+            }
+        }
 
         impl Encode for $name {
             fn encode(&self, buf: &mut BytesMut) -> anyhow::Result<()> {
