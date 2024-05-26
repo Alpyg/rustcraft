@@ -12,18 +12,21 @@ pub mod __private {
 mod decoder;
 mod encoder;
 mod impls;
+mod nbt;
 pub mod packets;
 mod plugin;
 
 pub use decoder::*;
 pub use encoder::*;
 pub use impls::*;
+pub use nbt::*;
 pub use plugin::*;
 use protocol_derive::{define_protocol, Decode, Encode, Packet};
 
 extern crate self as protocol;
 
 pub const MAX_PACKET_SIZE: i32 = 2097152;
+pub const MAX_DATA_LEN: usize = 1048576;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PacketSide {

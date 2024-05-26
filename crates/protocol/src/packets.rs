@@ -19,13 +19,13 @@ define_protocol!(765 {
             0x00 StatusResponse {
                 response: &'a str,
             },
-            0x01 PingResponse {
+            0x01 PingStatus {
                 payload: i64,
             },
         },
         Server {
             0x00 StatusRequest {},
-            0x01 PingRequest {
+            0x01 PongStatus {
                 payload: i64,
             }
         },
@@ -33,7 +33,7 @@ define_protocol!(765 {
 
     Login {
         Client {
-            0x00 Disconnect {
+            0x00 DisconnectLogin {
                 reason: &'a str,
             },
             0x01 EncryptionRequest {
@@ -75,6 +75,31 @@ define_protocol!(765 {
                 data: Option<Vec<u8>>,
             },
             0x03 LoginAcknowledged {},
+        },
+    },
+
+    Configuration {
+        Client {
+            0x00 ClientPluginMessageConfiguration {
+                channel: &'a str,
+                data: Vec<u8>,
+            },
+            0x01 DisconnectConfiguration {
+                reason: &'a str,
+            },
+            0x02 Finish {},
+            0x03 KeepAliveConfiguration {
+                id: i64,
+            },
+            0x04 PingConfiguration {
+                id: i32,
+            },
+            0x05 Registry {
+
+            },
+        },
+        Server {
+            0x00 ClientInformationConfiguration {},
         },
     },
 });
