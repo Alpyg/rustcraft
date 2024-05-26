@@ -1,14 +1,14 @@
-use anyhow::Ok;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use derive_more::{Deref, DerefMut};
+use derive_more::{Deref, DerefMut, From, TryInto};
 use indexmap::IndexMap;
 
 use crate::{Decode, Encode};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, From, TryInto)]
+#[try_into(owned, ref, ref_mut)]
 #[repr(u8)]
 pub enum Tag {
-    End,
+    End(),
     Byte(i8),
     Short(i16),
     Int(i32),
@@ -26,7 +26,7 @@ pub enum Tag {
 impl Tag {
     fn id(&self) -> u8 {
         match self {
-            Tag::End => 0,
+            Tag::End() => 0,
             Tag::Byte(_) => 1,
             Tag::Short(_) => 2,
             Tag::Int(_) => 3,
@@ -45,7 +45,7 @@ impl Tag {
     fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()> {
         let id = self.id();
         match self {
-            Tag::End => wtr.put_u8(0),
+            Tag::End() => wtr.put_u8(0),
             Tag::Byte(val) => wtr.put_i8(*val),
             Tag::Short(val) => wtr.put_i16(*val),
             Tag::Int(val) => wtr.put_i32(*val),
@@ -105,7 +105,7 @@ impl Tag {
 
     fn decode(rdr: &mut &[u8], id: u8) -> anyhow::Result<Self> {
         match id {
-            0 => Ok(Tag::End),
+            0 => Ok(Tag::End()),
             1 => {
                 let val = rdr.get_i8();
                 Ok(Tag::Byte(val))
@@ -239,10 +239,10 @@ mod tests {
     fn list() {
         let mut list = List::new();
 
-        list.push(Tag::End);
+        list.push(Tag::End());
         list.push(Tag::Byte(7));
 
-        assert!(matches!(list.first().unwrap(), Tag::End));
+        assert!(matches!(list.first().unwrap(), Tag::End()));
         assert!(matches!(list.get(1).unwrap(), Tag::Byte(7)));
     }
 
@@ -250,12 +250,12 @@ mod tests {
     fn compound() {
         let mut compound = Compound::new();
 
-        compound.insert("test".to_owned(), Tag::End);
+        compound.insert("test".to_owned(), Tag::End());
 
         assert!(compound.contains_key(&"test".to_string()));
         assert!(matches!(
             compound.get(&"test".to_string()).unwrap(),
-            Tag::End
+            Tag::End()
         ));
     }
 
@@ -263,13 +263,27 @@ mod tests {
     fn test_test() {
         let data = include_bytes!("testdata/test.nbt");
 
-        let _tag: Tag = Decode::decode(&mut data.as_slice()).unwrap();
+        let tag: Tag = Decode::decode(&mut data.as_slice()).unwrap();
 
-        //if let Tag::Compound(comp) = tag {
-        //    if let Tag::Compound(comp) = comp.first().unwrap().1 {
-        //        println!("{:#?}", comp.first().unwrap());
-        //    }
-        //}
+        if let Tag::Compound(mut compound) = tag {
+            let hello: &mut Compound = compound
+                .get_mut(&"hello world".to_owned())
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+            assert_eq!(
+                hello.get(&"name".to_owned()).unwrap(),
+                &Tag::String("Bananrama".to_owned())
+            );
+
+            hello.insert("name".to_owned(), Tag::String("awawa".to_owned()));
+
+            assert_eq!(
+                hello.get(&"name".to_owned()).unwrap(),
+                &Tag::String("awawa".to_owned())
+            );
+        }
     }
 
     #[test]
@@ -283,10 +297,8 @@ mod tests {
         let mut gz = GzDecoder::new(uncompressed.as_slice());
         gz.read_to_end(&mut data).unwrap();
 
-        println!("{} {}", uncompressed.len(), data.len());
-
         let _tag: Tag = Decode::decode(&mut data.as_slice()).unwrap();
 
-        //println!("{:#?}", tag);
+        //println!("{:#?}", _tag);
     }
 }

@@ -1,12 +1,13 @@
 use anyhow::anyhow;
 use bytes::{Buf, BufMut, BytesMut};
+use derive_more::{Add, Div, From, Into, Mul, Sub};
 use mem_macros::size_of;
 
 use crate::{Decode, Encode};
 
 macro_rules! define_varnum {
     ($name:ident, $type:ty, $container_type:ty, $max_size:literal) => {
-        #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq)]
+        #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq, Add, Sub, Mul, Div, From, Into)]
 
         pub struct $name(pub $type);
 
