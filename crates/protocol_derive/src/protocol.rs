@@ -5,7 +5,7 @@ use syn::{
     parse::{Parse, ParseStream},
     parse2,
     punctuated::Punctuated,
-    token, Ident, LitInt, Result, Token, Type,
+    token, GenericArgument, Ident, LitInt, PathArguments, Result, Token, Type,
 };
 
 pub(super) fn define_protocol(tokens: TokenStream) -> Result<TokenStream> {
@@ -29,7 +29,7 @@ pub(super) fn define_protocol(tokens: TokenStream) -> Result<TokenStream> {
                 let lifetime = if packet
                     .fields
                     .iter()
-                    .any(|field| matches!(&field.ty, Type::Reference(_)))
+                    .any(|field| contains_lifetime(&field.ty))
                 {
                     Some(quote! {<'a>})
                 } else {
@@ -145,5 +145,23 @@ impl Parse for Field {
             _colon_token: input.parse()?,
             ty: input.parse()?,
         })
+    }
+}
+
+fn contains_lifetime(ty: &Type) -> bool {
+    match ty {
+        Type::Reference(reference) => reference.lifetime.is_some(),
+        Type::Path(type_path) => type_path.path.segments.iter().any(|segment| {
+            if let PathArguments::AngleBracketed(ref args) = segment.arguments {
+                args.args.iter().any(|arg| match arg {
+                    GenericArgument::Lifetime(_) => true,
+                    GenericArgument::Type(inner_ty) => contains_lifetime(inner_ty),
+                    _ => false,
+                })
+            } else {
+                false
+            }
+        }),
+        _ => false,
     }
 }
