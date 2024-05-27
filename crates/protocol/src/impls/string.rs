@@ -5,8 +5,8 @@ use bytes::BytesMut;
 
 use crate::{Bounded, Decode, Encode, VarInt};
 
-const MAX_STRING_LEN: usize = 32767;
-//const MAX_TEXT_LEN: usize = 262144;
+pub const MAX_STRING_LEN: usize = 32767;
+//pub const MAX_TEXT_LEN: usize = 262144;
 
 impl Encode for str {
     fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()> {

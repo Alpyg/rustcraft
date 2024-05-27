@@ -1,5 +1,6 @@
 use anyhow::ensure;
 use bytes::BytesMut;
+use derive_more::{AsRef, Deref, DerefMut, From};
 
 use crate::{Decode, Encode, VarInt};
 
@@ -69,6 +70,34 @@ impl<'a, T: Decode<'a>> Decode<'a> for Vec<T> {
         }
 
         Ok(vec)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deref, DerefMut, AsRef, From)]
+pub struct LenPrefixed<T>(pub Vec<T>);
+
+impl<T: Encode> Encode for LenPrefixed<T> {
+    fn encode(&self, wtr: &mut bytes::BytesMut) -> anyhow::Result<()> {
+        VarInt(self.len() as i32).encode(wtr)?;
+
+        for i in self.iter() {
+            i.encode(wtr)?
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, T: Decode<'a>> Decode<'a> for LenPrefixed<T> {
+    fn decode(rdr: &mut &'a [u8]) -> anyhow::Result<Self> {
+        let len = VarInt::decode(rdr)?.0 as usize;
+
+        let mut vec = Vec::<T>::with_capacity(len);
+        for _ in 0..len {
+            vec.push(Decode::decode(rdr)?)
+        }
+
+        Ok(Self(vec))
     }
 }
 

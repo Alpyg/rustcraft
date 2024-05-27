@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{define_protocol, Decode, Encode, Property, VarInt};
+use crate::{define_protocol, Bounded, Decode, Encode, LenPrefixed, RawBytes, Tag, VarInt};
 
 define_protocol!(765 {
     Handshaking {
@@ -37,17 +37,14 @@ define_protocol!(765 {
                 reason: &'a str,
             },
             0x01 EncryptionRequest {
-                server_id: &'a str,
-                public_key_length: VarInt,
-                public_key: Vec<u8>,
-                verify_token_length: VarInt,
-                verify_token: Vec<u8>,
+                server_id: Bounded<&'a str, 20>,
+                public_key: LenPrefixed<u8>,
+                verify_token: LenPrefixed<u8>,
             },
             0x02 LoginSuccess {
                 uuid: Uuid,
                 username: &'a str,
-                number_of_properties: VarInt,
-                properties: Vec<Property>,
+                properties: LenPrefixed<Property>,
             },
             0x03 SetCompression {
                 threshold: VarInt,
@@ -55,7 +52,7 @@ define_protocol!(765 {
             0x04 LoginPluginRequest {
                 message_id: VarInt,
                 channel: &'a str,
-                data: Vec<u8>,
+                data: RawBytes<'a>,
             },
         },
         Server {
@@ -64,15 +61,13 @@ define_protocol!(765 {
                 uuid: Uuid,
             },
             0x01 EncryptionResponse {
-                shared_secret_length: VarInt,
-                shared_secret: Vec<u8>,
-                verify_token_length: VarInt,
-                verify_token: Vec<u8>,
+                shared_secret: LenPrefixed<u8>,
+                verify_token: LenPrefixed<u8>,
             },
             0x02 LoginPluginResponse {
                 message_id: VarInt,
                 successful: bool,
-                data: Option<Vec<u8>>,
+                data: Option<Bounded<RawBytes<'a>, 1048576>>,
             },
             0x03 LoginAcknowledged {},
         },
@@ -81,25 +76,63 @@ define_protocol!(765 {
     Configuration {
         Client {
             0x00 ClientPluginMessageConfiguration {
-                channel: &'a str,
-                data: Vec<u8>,
+                channel: &'a str, // Ident
+                data: RawBytes<'a>,
             },
             0x01 DisconnectConfiguration {
-                reason: &'a str,
+                reason: &'a str, // Text
             },
             0x02 Finish {},
-            0x03 KeepAliveConfiguration {
+            0x03 KeepAliveClientConfiguration {
                 id: i64,
             },
             0x04 PingConfiguration {
                 id: i32,
             },
             0x05 Registry {
-
+                registry_codec: Tag,
             },
+            0x06 RemoveResourcePackConfiguration {
+                uuid: Option<Uuid>,
+            },
+            0x07 AddResourcePackConfiguration {
+                uuid: Uuid,
+                url: &'a str,
+                hash: Bounded<&'a str, 40>,
+                forced: bool,
+                option: Option<String> // Text
+            },
+            0x08 FeatureFlags {
+                feature_flags: LenPrefixed<String> // Ident
+            },
+            0x09 UpdateTagsConfiguration {},
         },
         Server {
-            0x00 ClientInformationConfiguration {},
+            0x00 ClientInformationConfiguration {
+                locale: Bounded<&'a str, 16>,
+                view_distance: u8,
+                chat_mode: ChatMode,
+                chat_colors: bool,
+                displayed_skin_parts: u8,
+                main_hand: Hand,
+                enable_text_filtering: bool,
+                allow_server_listings: bool,
+            },
+            0x01 PluginMessageConfiguration {
+                channel: &'a str, // Ident
+                data: Bounded<RawBytes<'a>, 32767>,
+            },
+            0x02 AcknowledgeFinishConfiguration {},
+            0x03 KeepAliveServerConfiguration {
+                id: i64,
+            },
+            0x04 PongConfiguration {
+                id: i32,
+            },
+            0x05 ResourcePackResponseConfiguration {
+                uuid: Uuid,
+                result: ResourcePackResponseConfigurationResult,
+            },
         },
     },
 });
@@ -108,4 +141,36 @@ define_protocol!(765 {
 pub enum HandshakeNextState {
     Status,
     Login,
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Property<S = String> {
+    pub name: S,
+    pub value: S,
+    pub signature: Option<S>,
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ChatMode {
+    Enabled,
+    CommandOnly,
+    Hidden,
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Hand {
+    Left,
+    Right,
+}
+
+#[derive(Encode, Decode, Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ResourcePackResponseConfigurationResult {
+    SuccessfullyDownloaded,
+    Declined,
+    FailedToDownload,
+    Accpeted,
+    Downloaded,
+    InvalidURL,
+    FailedToReload,
+    Discarded,
 }
