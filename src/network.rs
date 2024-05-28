@@ -5,9 +5,10 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
 
-use bytes::{Buf, BytesMut};
-use protocol::{packets::*, PacketDecoder, PacketEncoder, PacketEvent, VarInt, NBT};
+use protocol::{packets::*, PacketDecoder, PacketEncoder, PacketEvent, VarInt};
 use uuid::Uuid;
+
+use crate::core::LocalPlayer;
 
 #[derive(Reflect, Resource, InspectorOptions, Debug)]
 #[reflect(Resource, InspectorOptions)]
@@ -47,10 +48,13 @@ impl Plugin for NetworkPlugin {
             PreUpdate,
             receive_packets.run_if(resource_exists::<ServerConnection>),
         );
+        app.add_systems(
+            PostUpdate,
+            send_packets.run_if(resource_exists::<ServerConnection>),
+        );
     }
 }
 
-/// TODO: move this to an async method so it doesnt block
 fn connect(
     mut commands: Commands,
     mut encoder: ResMut<PacketEncoder>,
@@ -114,6 +118,7 @@ fn connect(
 
     stream.set_nonblocking(true).unwrap();
     commands.insert_resource(ServerConnection::new("127.0.0.1:25565".to_string(), stream));
+    commands.spawn((LocalPlayer, Transform::default(), Name::new("Player")));
 }
 
 fn receive_packets(
@@ -151,12 +156,16 @@ fn receive_packets(
             }
         };
 
-        println!("{:#?}", frame);
-
         ev.send(PacketEvent {
             timestamp: Instant::now(),
             id: frame.id,
             data: frame.body.freeze(),
         });
     }
+}
+
+fn send_packets(mut encoder: ResMut<PacketEncoder>, connection: ResMut<ServerConnection>) {
+    let mut stream = connection.stream.as_ref().unwrap();
+
+    stream.write_all(&encoder.take().freeze()).unwrap();
 }

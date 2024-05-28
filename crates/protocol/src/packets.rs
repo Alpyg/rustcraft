@@ -1,6 +1,8 @@
 use uuid::Uuid;
 
-use crate::{define_protocol, Bounded, Decode, Encode, LenPrefixed, RawBytes, VarInt, NBT};
+use crate::{
+    define_protocol, Bounded, Decode, Encode, LenPrefixed, Position, RawBytes, VarInt, NBT,
+};
 
 define_protocol!(765 {
     Handshaking {
@@ -134,6 +136,50 @@ define_protocol!(765 {
             0x05 ResourcePackResponseConfiguration {
                 uuid: Uuid,
                 result: ResourcePackResponseConfigurationResult,
+            },
+        },
+    },
+
+    Play {
+        Client {
+            0x24 KeepAliveClientPlay {
+                id: i64,
+            },
+            0x29 LoginPlay {
+                id: i32,
+                is_hardcore: bool,
+                dimensions: LenPrefixed<String>,
+                max_players: VarInt,
+                view_distance: VarInt,
+                simulation_distance: VarInt,
+                reduced_debug_info: bool,
+                enable_respawn_screen: bool,
+                do_limited_craftingn: bool,
+                dimension_type: &'a str,
+                dimension_name: &'a str,
+                hashed_seed: i64,
+                gamemode: u8,
+                previous_gamemode: i8,
+                is_debug: bool,
+                is_flat: bool,
+                death_location: Option<(String, Position)>,
+            },
+            0x3e SynchronizePlayerPosition {
+                x: f64,
+                y: f64,
+                z: f64,
+                yaw: f32,
+                pitch: f32,
+                flags: u8,
+                teleport_id: VarInt,
+            },
+        },
+        Server {
+            0x00 ConfirmTeleport {
+                teleport_id: VarInt,
+            },
+            0x15 KeepAliveServerPlay {
+                id: i64,
             },
         },
     },
