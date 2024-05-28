@@ -7,7 +7,7 @@ use crate::{Decode, Encode};
 #[derive(Debug, Clone, PartialEq, From, TryInto)]
 #[try_into(owned, ref, ref_mut)]
 #[repr(u8)]
-pub enum Tag {
+pub enum NBT {
     End(),
     Byte(i8),
     Short(i16),
@@ -23,44 +23,44 @@ pub enum Tag {
     LongArray(Vec<i64>),
 }
 
-impl Tag {
+impl NBT {
     fn id(&self) -> u8 {
         match self {
-            Tag::End() => 0,
-            Tag::Byte(_) => 1,
-            Tag::Short(_) => 2,
-            Tag::Int(_) => 3,
-            Tag::Long(_) => 4,
-            Tag::Float(_) => 5,
-            Tag::Double(_) => 6,
-            Tag::ByteArray(_) => 7,
-            Tag::String(_) => 8,
-            Tag::List(_) => 9,
-            Tag::Compound(_) => 10,
-            Tag::IntArray(_) => 11,
-            Tag::LongArray(_) => 12,
+            NBT::End() => 0,
+            NBT::Byte(_) => 1,
+            NBT::Short(_) => 2,
+            NBT::Int(_) => 3,
+            NBT::Long(_) => 4,
+            NBT::Float(_) => 5,
+            NBT::Double(_) => 6,
+            NBT::ByteArray(_) => 7,
+            NBT::String(_) => 8,
+            NBT::List(_) => 9,
+            NBT::Compound(_) => 10,
+            NBT::IntArray(_) => 11,
+            NBT::LongArray(_) => 12,
         }
     }
 
     fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()> {
         let id = self.id();
         match self {
-            Tag::End() => wtr.put_u8(0),
-            Tag::Byte(val) => wtr.put_i8(*val),
-            Tag::Short(val) => wtr.put_i16(*val),
-            Tag::Int(val) => wtr.put_i32(*val),
-            Tag::Long(val) => wtr.put_i64(*val),
-            Tag::Float(val) => wtr.put_f32(*val),
-            Tag::Double(val) => wtr.put_f64(*val),
-            Tag::ByteArray(val) => {
+            NBT::End() => wtr.put_u8(0),
+            NBT::Byte(val) => wtr.put_i8(*val),
+            NBT::Short(val) => wtr.put_i16(*val),
+            NBT::Int(val) => wtr.put_i32(*val),
+            NBT::Long(val) => wtr.put_i64(*val),
+            NBT::Float(val) => wtr.put_f32(*val),
+            NBT::Double(val) => wtr.put_f64(*val),
+            NBT::ByteArray(val) => {
                 wtr.put_i32(val.len() as i32);
                 wtr.put_slice(val);
             }
-            Tag::String(val) => {
+            NBT::String(val) => {
                 wtr.put_u16(val.len() as u16);
                 wtr.put_slice(val.as_bytes());
             }
-            Tag::List(val) => {
+            NBT::List(val) => {
                 id.encode(wtr)?;
                 if val.is_empty() {
                     wtr.put_u8(0);
@@ -74,7 +74,7 @@ impl Tag {
                     }
                 }
             }
-            Tag::Compound(val) => {
+            NBT::Compound(val) => {
                 id.encode(wtr)?;
                 for (key, tag) in &val.0 {
                     let tag_id = tag.id();
@@ -86,13 +86,13 @@ impl Tag {
                     tag.encode(wtr)?;
                 }
             }
-            Tag::IntArray(val) => {
+            NBT::IntArray(val) => {
                 wtr.put_i32(val.len() as i32);
                 for val in val {
                     wtr.put_i32(*val);
                 }
             }
-            Tag::LongArray(val) => {
+            NBT::LongArray(val) => {
                 wtr.put_i32(val.len() as i32);
                 for val in val {
                     wtr.put_i64(*val);
@@ -105,43 +105,43 @@ impl Tag {
 
     fn decode(rdr: &mut &[u8], id: u8) -> anyhow::Result<Self> {
         match id {
-            0 => Ok(Tag::End()),
+            0 => Ok(NBT::End()),
             1 => {
                 let val = rdr.get_i8();
-                Ok(Tag::Byte(val))
+                Ok(NBT::Byte(val))
             }
             2 => {
                 let val = rdr.get_i16();
-                Ok(Tag::Short(val))
+                Ok(NBT::Short(val))
             }
             3 => {
                 let val = rdr.get_i32();
-                Ok(Tag::Int(val))
+                Ok(NBT::Int(val))
             }
             4 => {
                 let val = rdr.get_i64();
-                Ok(Tag::Long(val))
+                Ok(NBT::Long(val))
             }
             5 => {
                 let val = rdr.get_f32();
-                Ok(Tag::Float(val))
+                Ok(NBT::Float(val))
             }
             6 => {
                 let val = rdr.get_f64();
-                Ok(Tag::Double(val))
+                Ok(NBT::Double(val))
             }
             7 => {
                 let len = rdr.get_i32() as usize;
                 let mut buf = vec![0; len];
                 rdr.copy_to_slice(&mut buf);
-                Ok(Tag::ByteArray(buf.into()))
+                Ok(NBT::ByteArray(buf.into()))
             }
             8 => {
                 let len = rdr.get_u16() as usize;
                 let mut buf = vec![0; len];
                 rdr.copy_to_slice(&mut buf);
                 let val = String::from_utf8(buf)?;
-                Ok(Tag::String(val))
+                Ok(NBT::String(val))
             }
             9 => {
                 let id = rdr.get_u8();
@@ -149,13 +149,13 @@ impl Tag {
 
                 let mut list = List::with_capacity(len as usize);
                 if len <= 0 {
-                    Ok(Tag::List(List::new()))
+                    Ok(NBT::List(List::new()))
                 } else {
                     for _ in 0..len {
-                        let tag = Tag::decode(rdr, id)?;
+                        let tag = NBT::decode(rdr, id)?;
                         list.push(tag);
                     }
-                    Ok(Tag::List(list))
+                    Ok(NBT::List(list))
                 }
             }
             10 => {
@@ -171,10 +171,10 @@ impl Tag {
                     rdr.copy_to_slice(&mut buf);
                     let name = String::from_utf8(buf)?;
 
-                    let tag = Tag::decode(rdr, id)?;
+                    let tag = NBT::decode(rdr, id)?;
                     map.insert(name, tag);
                 }
-                Ok(Tag::Compound(map))
+                Ok(NBT::Compound(map))
             }
             11 => {
                 let len = rdr.get_i32() as usize;
@@ -182,7 +182,7 @@ impl Tag {
                 for _ in 0..len {
                     vec.push(rdr.get_i32());
                 }
-                Ok(Tag::IntArray(vec))
+                Ok(NBT::IntArray(vec))
             }
             12 => {
                 let len = rdr.get_i32() as usize;
@@ -190,7 +190,7 @@ impl Tag {
                 for _ in 0..len {
                     vec.push(rdr.get_i64());
                 }
-                Ok(Tag::LongArray(vec))
+                Ok(NBT::LongArray(vec))
             }
             _ => Err(anyhow::anyhow!("Unknown tag ID: {}", id)),
         }
@@ -198,36 +198,37 @@ impl Tag {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq)]
-pub struct List(Vec<Tag>);
+pub struct List(Vec<NBT>);
 
 impl List {
     fn new() -> Self {
-        Self(Vec::<Tag>::new())
+        Self(Vec::<NBT>::new())
     }
 
     fn with_capacity(capacity: usize) -> Self {
-        Self(Vec::<Tag>::with_capacity(capacity))
+        Self(Vec::<NBT>::with_capacity(capacity))
     }
 }
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq)]
-pub struct Compound(IndexMap<String, Tag>);
+pub struct Compound(IndexMap<String, NBT>);
 
 impl Compound {
     fn new() -> Self {
-        Self(IndexMap::<String, Tag>::new())
+        Self(IndexMap::<String, NBT>::new())
     }
 }
 
-impl Encode for Tag {
+impl Encode for NBT {
     fn encode(&self, wtr: &mut BytesMut) -> anyhow::Result<()> {
         self.encode(wtr)
     }
 }
 
-impl<'a> Decode<'a> for Tag {
+impl<'a> Decode<'a> for NBT {
     fn decode(rdr: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Tag::decode(rdr, 10)
+        let id = u8::decode(rdr)?;
+        NBT::decode(rdr, id)
     }
 }
 
@@ -239,33 +240,34 @@ mod tests {
     fn list() {
         let mut list = List::new();
 
-        list.push(Tag::End());
-        list.push(Tag::Byte(7));
+        list.push(NBT::End());
+        list.push(NBT::Byte(7));
 
-        assert!(matches!(list.first().unwrap(), Tag::End()));
-        assert!(matches!(list.get(1).unwrap(), Tag::Byte(7)));
+        assert!(matches!(list.first().unwrap(), NBT::End()));
+        assert!(matches!(list.get(1).unwrap(), NBT::Byte(7)));
     }
 
     #[test]
     fn compound() {
         let mut compound = Compound::new();
 
-        compound.insert("test".to_owned(), Tag::End());
+        compound.insert("test".to_owned(), NBT::End());
 
         assert!(compound.contains_key(&"test".to_string()));
         assert!(matches!(
             compound.get(&"test".to_string()).unwrap(),
-            Tag::End()
+            NBT::End()
         ));
     }
 
     #[test]
     fn test_test() {
-        let data = include_bytes!("testdata/test.nbt");
+        let mut data = vec![10];
+        data.extend_from_slice(include_bytes!("testdata/test.nbt"));
 
-        let tag: Tag = Decode::decode(&mut data.as_slice()).unwrap();
+        let tag: NBT = Decode::decode(&mut data.as_slice()).unwrap();
 
-        if let Tag::Compound(mut compound) = tag {
+        if let NBT::Compound(mut compound) = tag {
             let hello: &mut Compound = compound
                 .get_mut(&"hello world".to_owned())
                 .unwrap()
@@ -274,14 +276,14 @@ mod tests {
 
             assert_eq!(
                 hello.get(&"name".to_owned()).unwrap(),
-                &Tag::String("Bananrama".to_owned())
+                &NBT::String("Bananrama".to_owned())
             );
 
-            hello.insert("name".to_owned(), Tag::String("awawa".to_owned()));
+            hello.insert("name".to_owned(), NBT::String("awawa".to_owned()));
 
             assert_eq!(
                 hello.get(&"name".to_owned()).unwrap(),
-                &Tag::String("awawa".to_owned())
+                &NBT::String("awawa".to_owned())
             );
         }
     }
@@ -292,12 +294,12 @@ mod tests {
         use std::io::Read;
 
         let uncompressed = include_bytes!("testdata/bigtest.nbt");
-        let mut data = vec![];
+        let mut data = vec![10];
 
         let mut gz = GzDecoder::new(uncompressed.as_slice());
         gz.read_to_end(&mut data).unwrap();
 
-        let _tag: Tag = Decode::decode(&mut data.as_slice()).unwrap();
+        let _tag: NBT = Decode::decode(&mut data.as_slice()).unwrap();
 
         //println!("{:#?}", _tag);
     }

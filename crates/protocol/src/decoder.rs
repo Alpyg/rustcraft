@@ -1,3 +1,5 @@
+use std::fmt;
+
 use anyhow::{ensure, Context};
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
@@ -11,7 +13,7 @@ type Cipher = cfb8::Decryptor<aes::Aes128>;
 #[reflect(Resource, InspectorOptions)]
 pub struct PacketDecoder {
     #[reflect(ignore)]
-    buf: BytesMut,
+    pub buf: BytesMut,
     decompress_buf: Vec<u8>,
     threshold: i32,
     #[reflect(ignore)]
@@ -78,7 +80,7 @@ impl PacketDecoder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PacketFrame {
     pub id: i32,
     pub body: BytesMut,
@@ -108,5 +110,14 @@ impl PacketFrame {
         );
 
         Ok(pkt)
+    }
+}
+
+impl fmt::Debug for PacketFrame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PacketFrame")
+            .field("id", &format_args!("{:#04x}", self.id))
+            .field("body", &self.body)
+            .finish()
     }
 }

@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{define_protocol, Bounded, Decode, Encode, LenPrefixed, RawBytes, Tag, VarInt};
+use crate::{define_protocol, Bounded, Decode, Encode, LenPrefixed, RawBytes, VarInt, NBT};
 
 define_protocol!(765 {
     Handshaking {
@@ -57,7 +57,7 @@ define_protocol!(765 {
         },
         Server {
             0x00 LoginStart {
-                name: &'a str,
+                name: Bounded<&'a str, 16>,
                 uuid: Uuid,
             },
             0x01 EncryptionResponse {
@@ -82,15 +82,15 @@ define_protocol!(765 {
             0x01 DisconnectConfiguration {
                 reason: &'a str, // Text
             },
-            0x02 Finish {},
+            0x02 FinishConfiguration {},
             0x03 KeepAliveClientConfiguration {
                 id: i64,
             },
             0x04 PingConfiguration {
                 id: i32,
             },
-            0x05 Registry {
-                registry_codec: Tag,
+            0x05 RegistryData {
+                registry_codec: NBT,
             },
             0x06 RemoveResourcePackConfiguration {
                 uuid: Option<Uuid>,
@@ -105,7 +105,9 @@ define_protocol!(765 {
             0x08 FeatureFlags {
                 feature_flags: LenPrefixed<String> // Ident
             },
-            0x09 UpdateTagsConfiguration {},
+            0x09 UpdateTagsConfiguration {
+                tags: LenPrefixed<TagArray>,
+            },
         },
         Server {
             0x00 ClientInformationConfiguration {
@@ -173,4 +175,16 @@ pub enum ResourcePackResponseConfigurationResult {
     InvalidURL,
     FailedToReload,
     Discarded,
+}
+
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+pub struct TagArray {
+    identifier: String,
+    tags: LenPrefixed<Tag>,
+}
+
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+pub struct Tag {
+    identifier: String,
+    ids: LenPrefixed<VarInt>,
 }

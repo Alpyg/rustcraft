@@ -11,7 +11,7 @@ type Cipher = cfb8::Encryptor<aes::Aes128>;
 #[reflect(Resource, InspectorOptions)]
 pub struct PacketEncoder {
     #[reflect(ignore)]
-    buf: BytesMut,
+    pub buf: BytesMut,
     compress_buf: Vec<u8>,
     threshold: i32,
     #[reflect(ignore)]

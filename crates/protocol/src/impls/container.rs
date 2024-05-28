@@ -81,7 +81,7 @@ impl<T: Encode> Encode for LenPrefixed<T> {
         VarInt(self.len() as i32).encode(wtr)?;
 
         for i in self.iter() {
-            i.encode(wtr)?
+            i.encode(wtr)?;
         }
 
         Ok(())

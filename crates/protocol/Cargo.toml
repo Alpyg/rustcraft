@@ -8,6 +8,7 @@ aes.workspace = true
 anyhow.workspace = true
 bevy.workspace = true
 bevy-inspector-egui.workspace = true
+byteorder.workspace = true
 bytes.workspace = true
 cfb8.workspace = true
 derive_more.workspace = true

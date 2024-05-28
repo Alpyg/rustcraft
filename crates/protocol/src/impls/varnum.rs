@@ -1,14 +1,16 @@
 use anyhow::anyhow;
-use bytes::{Buf, BufMut, BytesMut};
-use derive_more::{Add, Div, From, Into, Mul, Sub};
+use byteorder::ReadBytesExt;
+use bytes::{BufMut, BytesMut};
+use derive_more::{Deref, DerefMut, From, Into};
 use mem_macros::size_of;
 
 use crate::{Decode, Encode};
 
 macro_rules! define_varnum {
     ($name:ident, $type:ty, $container_type:ty, $max_size:literal) => {
-        #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq, Add, Sub, Mul, Div, From, Into)]
-
+        #[derive(
+            Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq, Deref, DerefMut, From, Into,
+        )]
         pub struct $name(pub $type);
 
         impl $name {
@@ -41,7 +43,7 @@ macro_rules! define_varnum {
             fn decode(buf: &mut &[u8]) -> anyhow::Result<Self> {
                 let mut val = 0 as $container_type;
                 for i in 0..$max_size {
-                    let byte = buf.get_u8();
+                    let byte = buf.read_u8()?;
                     val |= (byte as $container_type & 0x7F) << (i * 7);
 
                     if byte & 0x80 == 0 {
