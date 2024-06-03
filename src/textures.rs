@@ -13,7 +13,7 @@ pub struct TextureFolder(Handle<LoadedFolder>);
 #[reflect(Resource, InspectorOptions)]
 pub struct Textures {
     pub block: Handle<Image>,
-    pub textures: HashMap<String, Handle<Image>>,
+    pub textures: HashMap<String, AssetId<Image>>,
 }
 
 pub struct TexturePlugin;
@@ -56,10 +56,17 @@ fn create_texture_atlas(
     let mut texture_atlas_builder = TextureAtlasBuilder::default();
     let loaded_folder = loaded_folders.get(&texture_folder.0).unwrap();
 
+    let mut textures_map = HashMap::new();
     for handle in loaded_folder.handles.iter() {
         let id = handle.id().typed_unchecked::<Image>();
         if let Some(texture) = textures.get(id) {
             texture_atlas_builder.add_texture(Some(id), texture);
+
+            let file_name = handle.path().unwrap().path().file_stem().unwrap();
+            textures_map.insert(
+                format!("minecraft:block/{}", file_name.to_str().unwrap()),
+                id,
+            );
         };
     }
 
@@ -68,11 +75,21 @@ fn create_texture_atlas(
 
     commands.spawn(Camera2dBundle::default());
     commands.spawn((
-        SpriteBundle {
+        SpriteSheetBundle {
             texture: texture.clone(),
             transform: Transform {
-                scale: Vec3::splat(0.99),
+                scale: Vec3::splat(10.0),
                 ..default()
+            },
+            atlas: TextureAtlas {
+                index: layout
+                    .get_texture_index(
+                        *textures_map
+                            .get("minecraft:block/magenta_terracotta")
+                            .unwrap(),
+                    )
+                    .unwrap(),
+                layout: texture_atlases.add(layout),
             },
             ..default()
         },
@@ -81,7 +98,7 @@ fn create_texture_atlas(
 
     commands.insert_resource(Textures {
         block: texture,
-        textures: HashMap::new(),
+        textures: textures_map,
     });
 }
 
