@@ -4,9 +4,9 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
+use uuid::Uuid;
 
 use protocol::{packets::*, PacketDecoder, PacketEncoder, PacketEvent, VarInt};
-use uuid::Uuid;
 
 use crate::core::LocalPlayer;
 
@@ -87,8 +87,7 @@ fn connect(
     let mut buf = [0; 10000];
     let len = stream.read(&mut buf).unwrap();
     decoder.queue_slice(&buf[0..len]);
-    let pkt_frame = decoder.try_next_packet().unwrap().unwrap();
-    let _login_success = pkt_frame.decode::<LoginSuccess>().unwrap();
+    let pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Login Success
 
     encoder.append_packet(&LoginAcknowledged {}).unwrap();
     stream.write_all(&encoder.take()).unwrap();
@@ -99,14 +98,14 @@ fn connect(
     decoder.queue_slice(&buf[0..len]);
 
     let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Clientbound Plugin Message
-    let pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Feature Flags
-    let _feature_flags = pkt_frame.decode::<FeatureFlags>().unwrap();
+    let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Feature Flags
 
     let mut buf = [0; 50000];
     let len = stream.read(&mut buf).unwrap();
     decoder.queue_slice(&buf[0..len]);
 
-    let _pkt_frame = decoder.try_next_packet(); // Registry Data
+    let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Registry Data
+
     let _pkt_frame = decoder.try_next_packet(); // Update Tags
     let _pkt_frame = decoder.try_next_packet(); // Finish Configuration
 

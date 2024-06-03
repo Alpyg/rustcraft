@@ -5,13 +5,19 @@ use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin
 use network::NetworkPlugin;
 use player::PlayerPlugin;
 use protocol::ProtocolPlugin;
+use registry::RegistryPlugin;
 use states::AppState;
+use textures::TexturePlugin;
+use world::WorldPlugin;
 
 mod core;
 mod network;
 mod player;
 mod prelude;
+mod registry;
 mod states;
+mod textures;
+mod world;
 
 fn main() {
     let mut app = App::new();
@@ -33,9 +39,16 @@ fn main() {
     #[cfg(debug_assertions)]
     app.add_plugins(RapierDebugRenderPlugin::default());
 
-    app.add_plugins((NetworkPlugin, ProtocolPlugin, PlayerPlugin));
+    app.add_plugins((
+        TexturePlugin,
+        RegistryPlugin,
+        NetworkPlugin,
+        ProtocolPlugin,
+        PlayerPlugin,
+        WorldPlugin,
+    ));
 
-    app.insert_state(AppState::InGame);
+    app.insert_state(AppState::Loading);
 
     app.run();
 }

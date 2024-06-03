@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use uuid::Uuid;
 
 use crate::{
@@ -144,6 +145,19 @@ define_protocol!(765 {
         Client {
             0x24 KeepAliveClientPlay {
                 id: i64,
+            },
+            0x25 ChunkDataAndUpdateLight {
+                chunk_x: i32,
+                chunk_z: i32,
+                heightmaps: NBT,
+                data: LenPrefixed<u8>,
+                block_entities: LenPrefixed<(u8, u16, VarInt, NBT)>, // BlockEntity
+                sky_light_mask: LenPrefixed<i64>,
+                block_light_mask: LenPrefixed<i64>,
+                empty_sky_light_mask: LenPrefixed<i64>,
+                empty_block_light_mask: LenPrefixed<i64>,
+                sky_lights: LenPrefixed<LenPrefixed<u8>>,
+                block_lights: LenPrefixed<LenPrefixed<u8>>,
             },
             0x29 LoginPlay {
                 id: i32,
