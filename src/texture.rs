@@ -7,21 +7,22 @@ use crate::state::AppState;
 #[reflect(Resource, InspectorOptions)]
 pub struct TextureFolder(Handle<LoadedFolder>);
 
-#[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
-#[reflect(Resource, InspectorOptions)]
+#[derive(Resource, Debug)]
 pub struct TextureRegistry {
     pub block: Handle<Image>,
-    #[reflect(ignore)]
+    pub block_layout: TextureAtlasLayout,
     pub textures: HashMap<String, (Handle<Image>, AssetId<Image>)>,
 }
 
 pub struct TexturePlugin;
 impl Plugin for TexturePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<TextureRegistry>();
-        app.add_systems(OnEnter(AppState::Loading), load_textures_folder);
-        app.add_systems(Update, check_textures.run_if(in_state(AppState::Loading)));
-        app.add_systems(OnEnter(AppState::Processing), create_texture_atlas);
+        app.add_systems(OnEnter(AppState::LoadingTextures), load_textures_folder);
+        app.add_systems(
+            Update,
+            check_textures.run_if(in_state(AppState::LoadingTextures)),
+        );
+        app.add_systems(OnEnter(AppState::ProcessingTextures), create_texture_atlas);
     }
 }
 
@@ -38,13 +39,14 @@ fn check_textures(
 ) {
     for event in events.read() {
         if event.is_loaded_with_dependencies(&texture_folder.0) {
-            next_state.set(AppState::Processing);
+            next_state.set(AppState::ProcessingTextures);
         }
     }
 }
 
 fn create_texture_atlas(
     mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
     texture_folder: Res<TextureFolder>,
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     loaded_folders: Res<Assets<LoadedFolder>>,
@@ -71,36 +73,13 @@ fn create_texture_atlas(
 
     let (layout, texture) = texture_atlas_builder.finish().unwrap();
     let texture_handle = textures.add(texture);
-    let layout_handle = texture_atlases.add(layout.clone());
-
-    commands.spawn(Camera2dBundle::default());
-    commands.spawn((
-        SpriteSheetBundle {
-            texture: texture_handle.clone(),
-            transform: Transform {
-                scale: Vec3::splat(10.0),
-                ..default()
-            },
-            atlas: TextureAtlas {
-                index: layout
-                    .get_texture_index(textures_map.get("minecraft:block/bell_side").unwrap().1)
-                    .unwrap(),
-                layout: layout_handle,
-            },
-            sprite: Sprite {
-                rect: Some(Rect {
-                    min: (0.0, 0.0).into(),
-                    max: (16.0, 16.0).into(),
-                }),
-                ..default()
-            },
-            ..default()
-        },
-        Name::new("Atlas"),
-    ));
+    texture_atlases.add(layout.clone());
 
     commands.insert_resource(TextureRegistry {
         block: texture_handle,
+        block_layout: layout,
         textures: textures_map,
     });
+
+    next_state.set(AppState::LoadingModels);
 }

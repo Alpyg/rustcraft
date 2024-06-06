@@ -58,7 +58,7 @@ fn main() {
         WorldPlugin,
     ));
 
-    app.insert_state(AppState::Loading);
+    app.insert_state(AppState::LoadingTextures);
 
     app.run();
 }
