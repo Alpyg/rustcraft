@@ -5,21 +5,25 @@ use bevy::{
 use bevy_editor_pls::EditorPlugin;
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
 
+use model::ModelPlugin;
 use network::NetworkPlugin;
 use player::PlayerPlugin;
 use protocol::ProtocolPlugin;
 use registry::RegistryPlugin;
-use states::AppState;
-use textures::TexturePlugin;
+use state::AppState;
+use texture::TexturePlugin;
 use world::WorldPlugin;
 
+mod axis;
 mod core;
+mod direction;
+mod model;
 mod network;
 mod player;
 mod prelude;
 mod registry;
-mod states;
-mod textures;
+mod state;
+mod texture;
 mod world;
 
 fn main() {
@@ -46,6 +50,7 @@ fn main() {
 
     app.add_plugins((
         TexturePlugin,
+        ModelPlugin,
         RegistryPlugin,
         NetworkPlugin,
         ProtocolPlugin,

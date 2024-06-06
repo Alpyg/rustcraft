@@ -1,9 +1,7 @@
-use std::fs;
-
 use bevy::{asset::LoadedFolder, prelude::*, utils::HashMap};
 use bevy_inspector_egui::prelude::*;
 
-use crate::states::AppState;
+use crate::state::AppState;
 
 #[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
@@ -11,7 +9,7 @@ pub struct TextureFolder(Handle<LoadedFolder>);
 
 #[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
-pub struct Textures {
+pub struct TextureRegistry {
     pub block: Handle<Image>,
     #[reflect(ignore)]
     pub textures: HashMap<String, (Handle<Image>, AssetId<Image>)>,
@@ -20,7 +18,7 @@ pub struct Textures {
 pub struct TexturePlugin;
 impl Plugin for TexturePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Textures>();
+        app.register_type::<TextureRegistry>();
         app.add_systems(OnEnter(AppState::Loading), load_textures_folder);
         app.add_systems(Update, check_textures.run_if(in_state(AppState::Loading)));
         app.add_systems(OnEnter(AppState::Processing), create_texture_atlas);
@@ -101,7 +99,7 @@ fn create_texture_atlas(
         Name::new("Atlas"),
     ));
 
-    commands.insert_resource(Textures {
+    commands.insert_resource(TextureRegistry {
         block: texture_handle,
         textures: textures_map,
     });

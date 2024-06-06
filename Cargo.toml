@@ -37,7 +37,7 @@ anyhow = { version = "1.0.86", features = ["backtrace"] }
 bevy = { version = "0.13.2", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.24.0"
 bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls.git", version = "0.8.1" }
-bevy_egui = "0.27.0"
+bevy_egui = "0.27.1"
 bevy_rapier3d = "0.26.0"
 bevy_reflect = "0.13.2"
 bimap = "0.6.3"
@@ -49,7 +49,7 @@ flate2 = "1.0.30"
 heck = "0.5.0"
 indexmap = "2.2.6"
 mem_macros = "1.0.1"
-proc-macro2 = "1.0.84"
+proc-macro2 = "1.0.85"
 quote = "1.0.36"
 rand = "0.8.5"
 serde = { version = "1.0.203", features = ["derive"] }
@@ -57,6 +57,6 @@ serde_json = "1.0.117"
 syn = "2.0.66"
 thiserror = "1.0.61"
 uuid = "1.8.0"
-zip = "2.1.0"
+zip = "2.1.3"
 protocol = { path = "crates/protocol" }
 protocol_derive = { path = "crates/protocol_derive" }
