@@ -129,45 +129,20 @@ pub fn build_block_mesh(model: &BlockModel) -> anyhow::Result<Mesh> {
     .with_inserted_indices(Indices::U32(Vec::<u32>::new()));
 
     for element in &model.elements {
-        let translation = (Into::<Vec3>::into(element.from) + Into::<Vec3>::into(element.to)) / 2.0;
-        let rotation = Quat::from_axis_angle(
-            element.rotation.axis.into(),
-            element.rotation.angle.to_radians(),
+        let mut transform = Transform::from_translation(
+            (Into::<Vec3>::into(element.from) + Into::<Vec3>::into(element.to)) / 2.0,
+        );
+        transform.rotate_around(
+            Into::<Vec3>::into(element.rotation.origin),
+            Quat::from_axis_angle(
+                element.rotation.axis.into(),
+                element.rotation.angle.to_radians(),
+            ),
         );
 
         let element_mesh = mesh_with_transform(
             &Cuboid::from_corners(element.from.into(), element.to.into()).mesh(),
-            &Transform {
-                translation,
-                ..default()
-            },
-        )
-        .unwrap();
-
-        let element_mesh = mesh_with_transform(
-            &element_mesh,
-            &Transform {
-                translation: -Into::<Vec3>::into(element.rotation.origin),
-                ..default()
-            },
-        )
-        .unwrap();
-
-        let element_mesh = mesh_with_transform(
-            &element_mesh,
-            &Transform {
-                rotation,
-                ..default()
-            },
-        )
-        .unwrap();
-
-        let element_mesh = mesh_with_transform(
-            &element_mesh,
-            &Transform {
-                translation: Into::<Vec3>::into(element.rotation.origin),
-                ..default()
-            },
+            &transform,
         )
         .unwrap();
 

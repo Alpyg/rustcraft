@@ -64,7 +64,7 @@ fn load_models(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn spawn(mut commands: Commands, block_models: Res<BlockModelRegistry>) {
     commands.spawn(PbrBundle {
-        mesh: block_models.get("bell_wall").unwrap().1.clone(),
+        mesh: block_models.get("lectern").unwrap().1.clone(),
         ..default()
     });
 }
