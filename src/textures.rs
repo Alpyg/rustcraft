@@ -13,7 +13,8 @@ pub struct TextureFolder(Handle<LoadedFolder>);
 #[reflect(Resource, InspectorOptions)]
 pub struct Textures {
     pub block: Handle<Image>,
-    pub textures: HashMap<String, AssetId<Image>>,
+    #[reflect(ignore)]
+    pub textures: HashMap<String, (Handle<Image>, AssetId<Image>)>,
 }
 
 pub struct TexturePlugin;
@@ -37,7 +38,6 @@ fn check_textures(
     texture_folder: Res<TextureFolder>,
     mut events: EventReader<AssetEvent<LoadedFolder>>,
 ) {
-    // Advance the `AppState` once all sprite handles have been loaded by the `AssetServer`
     for event in events.read() {
         if event.is_loaded_with_dependencies(&texture_folder.0) {
             next_state.set(AppState::Processing);
@@ -48,7 +48,6 @@ fn check_textures(
 fn create_texture_atlas(
     mut commands: Commands,
     texture_folder: Res<TextureFolder>,
-    asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     loaded_folders: Res<Assets<LoadedFolder>>,
     mut textures: ResMut<Assets<Image>>,
@@ -61,35 +60,41 @@ fn create_texture_atlas(
         let id = handle.id().typed_unchecked::<Image>();
         if let Some(texture) = textures.get(id) {
             texture_atlas_builder.add_texture(Some(id), texture);
-
-            let file_name = handle.path().unwrap().path().file_stem().unwrap();
-            textures_map.insert(
-                format!("minecraft:block/{}", file_name.to_str().unwrap()),
-                id,
-            );
-        };
+            if textures.get(id).is_some() {
+                let texture_handle = handle.clone().typed_unchecked::<Image>();
+                let file_name = handle.path().unwrap().path().file_stem().unwrap();
+                textures_map.insert(
+                    format!("minecraft:block/{}", file_name.to_str().unwrap()),
+                    (texture_handle.clone(), id),
+                );
+            };
+        }
     }
 
     let (layout, texture) = texture_atlas_builder.finish().unwrap();
-    let texture = textures.add(texture);
+    let texture_handle = textures.add(texture);
+    let layout_handle = texture_atlases.add(layout.clone());
 
     commands.spawn(Camera2dBundle::default());
     commands.spawn((
         SpriteSheetBundle {
-            texture: texture.clone(),
+            texture: texture_handle.clone(),
             transform: Transform {
                 scale: Vec3::splat(10.0),
                 ..default()
             },
             atlas: TextureAtlas {
                 index: layout
-                    .get_texture_index(
-                        *textures_map
-                            .get("minecraft:block/magenta_terracotta")
-                            .unwrap(),
-                    )
+                    .get_texture_index(textures_map.get("minecraft:block/bell_side").unwrap().1)
                     .unwrap(),
-                layout: texture_atlases.add(layout),
+                layout: layout_handle,
+            },
+            sprite: Sprite {
+                rect: Some(Rect {
+                    min: (0.0, 0.0).into(),
+                    max: (16.0, 16.0).into(),
+                }),
+                ..default()
             },
             ..default()
         },
@@ -97,32 +102,7 @@ fn create_texture_atlas(
     ));
 
     commands.insert_resource(Textures {
-        block: texture,
+        block: texture_handle,
         textures: textures_map,
     });
-}
-
-fn load_textures_old(
-    server: &Res<AssetServer>,
-    namespace: &str,
-    path: &str,
-) -> HashMap<String, Handle<Image>> {
-    let path = format!("assets/1.20.4/assets/minecraft/textures/{}", path);
-    let files = fs::read_dir(&path).unwrap();
-
-    let mut textures = HashMap::new();
-    for file in files {
-        let file = file.unwrap().path();
-        if file.extension().unwrap().to_str().unwrap() != "png" {
-            continue;
-        }
-        let filepath = file.strip_prefix("assets").unwrap();
-        let filename = file.file_stem().unwrap();
-
-        let handle: Handle<Image> = server.load(filepath.to_owned());
-        let key = format!("{}/{}", namespace, filename.to_str().unwrap()).to_owned();
-        textures.insert(key, handle);
-    }
-
-    textures
 }

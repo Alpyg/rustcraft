@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+};
 use bevy_editor_pls::EditorPlugin;
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
 
@@ -32,6 +35,8 @@ fn main() {
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),
+        FrameTimeDiagnosticsPlugin,
+        EntityCountDiagnosticsPlugin,
         EditorPlugin::default(),
         RapierPhysicsPlugin::<()>::default(),
     ));
