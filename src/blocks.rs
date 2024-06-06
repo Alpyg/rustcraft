@@ -1,4 +1,4 @@
-
+#[allow(dead_code)]
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlockType {

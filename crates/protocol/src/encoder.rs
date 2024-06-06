@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use anyhow::ensure;
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
@@ -34,7 +35,7 @@ impl PacketEncoder {
         Self::default()
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn prepend_packet<P>(&mut self, _pkt: &P) -> anyhow::Result<()>
     where
         P: Packet + Encode,
     {

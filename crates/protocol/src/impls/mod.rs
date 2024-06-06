@@ -17,5 +17,6 @@ pub use position::*;
 pub use primitive::*;
 pub use raw::*;
 pub use string::*;
+#[allow(unused_imports)]
 pub use tuple::*;
 pub use varnum::*;

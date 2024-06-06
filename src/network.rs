@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Instant;
@@ -87,7 +88,7 @@ fn connect(
     let mut buf = [0; 10000];
     let len = stream.read(&mut buf).unwrap();
     decoder.queue_slice(&buf[0..len]);
-    let pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Login Success
+    let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Login Success
 
     encoder.append_packet(&LoginAcknowledged {}).unwrap();
     stream.write_all(&encoder.take()).unwrap();

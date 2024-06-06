@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use bevy::prelude::*;
 
 #[derive(Component, Deref, DerefMut, Debug, Copy, Clone, PartialEq, Eq)]

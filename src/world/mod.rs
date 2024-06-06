@@ -12,7 +12,7 @@ impl Plugin for WorldPlugin {
 
 fn handle_chunk_data_and_update_light(mut pkts: EventReader<PacketEvent>) {
     for pkt in pkts.read() {
-        if let Some(pkt) = pkt.decode::<ChunkDataAndUpdateLight>() {
+        if let Some(_pkt) = pkt.decode::<ChunkDataAndUpdateLight>() {
             //println!("{:?}", pkt.data);
         }
     }

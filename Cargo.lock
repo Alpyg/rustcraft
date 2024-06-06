@@ -950,6 +950,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_mesh_tools"
+version = "0.1.0"
+source = "git+https://github.com/DGriffin91/bevy_mod_mesh_tools#d2117ec55d18b189c5a80877a8f350225de95d40"
+dependencies = [
+ "bevy",
+ "thiserror",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3855,6 +3864,7 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui 0.24.0",
  "bevy_editor_pls",
+ "bevy_mod_mesh_tools",
  "bevy_rapier3d",
  "bimap",
  "bytes",

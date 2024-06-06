@@ -5,23 +5,24 @@ use bevy_inspector_egui::prelude::*;
 use derive_more::{AsRef, Deref, DerefMut};
 use serde_json::Value;
 
-use self::block::{parse_block_model, BlockModel};
+use self::block::{build_block_mesh, parse_block_model, BlockModel};
 
 pub mod block;
 
 #[derive(Reflect, Resource, InspectorOptions, Deref, DerefMut, AsRef, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
-pub struct BlockModelRegistry(HashMap<String, BlockModel>);
+pub struct BlockModelRegistry(HashMap<String, (BlockModel, Handle<Mesh>)>);
 
 pub struct ModelPlugin;
 impl Plugin for ModelPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<BlockModelRegistry>();
         app.add_systems(Startup, load_models);
+        app.add_systems(Startup, spawn.after(load_models));
     }
 }
 
-fn load_models(mut commands: Commands) {
+fn load_models(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let mut blocks = HashMap::new();
     let blocks_path = "assets/1.20.4/assets/minecraft/models/block";
 
@@ -51,9 +52,19 @@ fn load_models(mut commands: Commands) {
         }
 
         let model = parse_block_model(&blocks, &value).unwrap();
+        let mesh = build_block_mesh(&model).unwrap();
 
-        blocks.insert(ident, model);
+        let mesh_handle = meshes.add(mesh);
+
+        blocks.insert(ident, (model, mesh_handle));
     }
 
-    commands.insert_resource(BlockModelRegistry(blocks))
+    commands.insert_resource(BlockModelRegistry(blocks));
+}
+
+fn spawn(mut commands: Commands, block_models: Res<BlockModelRegistry>) {
+    commands.spawn(PbrBundle {
+        mesh: block_models.get("bell_wall").unwrap().1.clone(),
+        ..default()
+    });
 }

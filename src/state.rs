@@ -4,6 +4,8 @@ use bevy::prelude::*;
 pub enum AppState {
     Loading,
     Processing,
+    #[allow(dead_code)]
     MainMenu,
+    #[allow(dead_code)]
     InGame,
 }
