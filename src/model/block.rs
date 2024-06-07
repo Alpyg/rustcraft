@@ -49,6 +49,7 @@ pub struct ModelElement {
 struct ModelRotation {
     #[serde(default)]
     origin: Vec3,
+    #[serde(default)]
     axis: Axis,
     #[serde(default)]
     angle: f32,
@@ -109,7 +110,31 @@ pub fn parse_block_model(models: &HashMap<String, BlockModel>, json: &Value) -> 
     for (key, val) in new_model.textures {
         model.textures.insert(key, val);
     }
-    for element in new_model.elements {
+    for mut element in new_model.elements {
+        let (from, to) = (element.from, element.to);
+        for (direction, face) in element.faces.iter_mut() {
+            if face.uv == Vec4::ZERO {
+                face.uv = match direction {
+                    Direction::Down => Vec4::new(from.x, from.z, to.x, to.z),
+                    Direction::Up => Vec4::new(from.x, from.z, to.x, to.z),
+                    Direction::North => Vec4::new(from.y, from.z, to.y, to.z),
+                    Direction::South => Vec4::new(from.y, from.z, to.y, to.z),
+                    Direction::West => Vec4::new(from.x, from.y, to.x, to.y),
+                    Direction::East => Vec4::new(from.x, from.y, to.x, to.y),
+                };
+            }
+
+            // TODO: Change this for actual coordinate rotation
+            let rotations = face.rotation / 90;
+            if rotations > 0 {
+                let mut uv: [f32; 4] = [0.0; 4];
+                face.uv.write_to_slice(&mut uv);
+
+                uv.rotate_right(rotations as usize);
+
+                face.uv = Vec4::from_slice(&uv);
+            }
+        }
         model.elements.push(element);
     }
 
@@ -183,8 +208,8 @@ fn create_element_mesh(
         let texture_rect = texture_registry.block_layout.textures[texture_index];
 
         let (uv_min, uv_max) = (
-            (texture_rect.min + face.uv.xy()) / 1024.0,
-            (texture_rect.min + face.uv.zw()) / 1024.0,
+            (texture_rect.min + face.uv.xy() + Vec2::splat(0.0001)) / 1024.0,
+            (texture_rect.min + face.uv.zw() + Vec2::splat(-0.0001)) / 1024.0,
         );
 
         let v_len = vertices.len();
@@ -212,10 +237,10 @@ fn create_element_mesh(
             }
             Direction::Down => {
                 vertices.extend_from_slice(&[
-                    [min.x, min.y, min.z],
                     [min.x, min.y, max.z],
-                    [max.x, min.y, max.z],
+                    [min.x, min.y, min.z],
                     [max.x, min.y, min.z],
+                    [max.x, min.y, max.z],
                 ]);
                 normals.extend_from_slice(&[
                     [0.0, -1.0, 0.0],
@@ -223,7 +248,7 @@ fn create_element_mesh(
                     [0.0, -1.0, 0.0],
                     [0.0, -1.0, 0.0],
                 ]);
-                indices.extend(&[0, 2, 1, 0, 3, 2].map(|i| i + v_len as u32));
+                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
                 uvs.extend_from_slice(&[
                     [uv_min.x, uv_min.y],
                     [uv_min.x, uv_max.y],
@@ -246,18 +271,18 @@ fn create_element_mesh(
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
                 uvs.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
+                    [uv_min.x, uv_min.y],
+                    [uv_min.x, uv_max.y],
                 ]);
             }
             Direction::South => {
                 vertices.extend_from_slice(&[
-                    [min.x, min.y, max.z],
-                    [min.x, max.y, max.z],
-                    [max.x, max.y, max.z],
                     [max.x, min.y, max.z],
+                    [max.x, max.y, max.z],
+                    [min.x, max.y, max.z],
+                    [min.x, min.y, max.z],
                 ]);
                 normals.extend_from_slice(&[
                     [1.0, 0.0, 0.0],
@@ -265,20 +290,20 @@ fn create_element_mesh(
                     [1.0, 0.0, 0.0],
                     [1.0, 0.0, 0.0],
                 ]);
-                indices.extend(&[0, 2, 1, 0, 3, 2].map(|i| i + v_len as u32));
+                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
                 uvs.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
+                    [uv_min.x, uv_min.y],
+                    [uv_min.x, uv_max.y],
                 ]);
             }
             Direction::East => {
                 vertices.extend_from_slice(&[
-                    [min.x, min.y, min.z],
                     [min.x, min.y, max.z],
                     [min.x, max.y, max.z],
                     [min.x, max.y, min.z],
+                    [min.x, min.y, min.z],
                 ]);
                 normals.extend_from_slice(&[
                     [0.0, 0.0, -1.0],
@@ -288,18 +313,18 @@ fn create_element_mesh(
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
                 uvs.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
+                    [uv_min.x, uv_min.y],
+                    [uv_min.x, uv_max.y],
                 ]);
             }
             Direction::West => {
                 vertices.extend_from_slice(&[
                     [max.x, min.y, min.z],
-                    [max.x, min.y, max.z],
-                    [max.x, max.y, max.z],
                     [max.x, max.y, min.z],
+                    [max.x, max.y, max.z],
+                    [max.x, min.y, max.z],
                 ]);
                 normals.extend_from_slice(&[
                     [0.0, 0.0, 1.0],
@@ -307,12 +332,12 @@ fn create_element_mesh(
                     [0.0, 0.0, 1.0],
                     [0.0, 0.0, 1.0],
                 ]);
-                indices.extend(&[0, 2, 1, 0, 3, 2].map(|i| i + v_len as u32));
+                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
                 uvs.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
+                    [uv_min.x, uv_min.y],
+                    [uv_min.x, uv_max.y],
                 ]);
             }
         };

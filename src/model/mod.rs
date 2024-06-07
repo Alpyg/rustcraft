@@ -78,13 +78,21 @@ fn spawn(
     texture_registry: Res<TextureRegistry>,
 ) {
     commands.spawn(PbrBundle {
-        mesh: block_models
-            .meshes
-            .get("dark_oak_fence_gate_open")
-            .unwrap()
-            .clone(),
+        transform: Transform::from_xyz(1.0, 0.0, 0.0),
+        mesh: block_models.meshes.get("lectern").unwrap().clone(),
         material: materials.add(StandardMaterial {
             base_color_texture: Some(texture_registry.block.clone()),
+            unlit: true,
+            ..default()
+        }),
+        ..default()
+    });
+    commands.spawn(PbrBundle {
+        transform: Transform::from_xyz(-1.0, 0.0, 0.0),
+        mesh: block_models.meshes.get("piston_head").unwrap().clone(),
+        material: materials.add(StandardMaterial {
+            base_color_texture: Some(texture_registry.block.clone()),
+            unlit: true,
             ..default()
         }),
         ..default()
@@ -94,11 +102,6 @@ fn spawn(
         Transform::from_xyz(-2.0, 1.7, -2.0).looking_at(Vec3::new(0.0, 0.5, 0.0), Vec3::Y);
 
     commands.spawn(Camera3dBundle {
-        transform: camera_and_light_transform,
-        ..default()
-    });
-
-    commands.spawn(PointLightBundle {
         transform: camera_and_light_transform,
         ..default()
     });
