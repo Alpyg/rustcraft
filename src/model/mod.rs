@@ -4,7 +4,7 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_inspector_egui::prelude::*;
 use serde_json::Value;
 
-use crate::{state::AppState, texture::TextureRegistry};
+use crate::{fly_camera::FlyCamera, state::AppState, texture::TextureRegistry};
 
 use self::block::{build_block_mesh, parse_block_model, BlockModel};
 
@@ -97,12 +97,35 @@ fn spawn(
         }),
         ..default()
     });
-
-    let camera_and_light_transform =
-        Transform::from_xyz(-2.0, 1.7, -2.0).looking_at(Vec3::new(0.0, 0.5, 0.0), Vec3::Y);
-
-    commands.spawn(Camera3dBundle {
-        transform: camera_and_light_transform,
+    commands.spawn(PbrBundle {
+        transform: Transform::from_xyz(1.0, 2.0, 0.0),
+        mesh: block_models.meshes.get("stone").unwrap().clone(),
+        material: materials.add(StandardMaterial {
+            base_color_texture: Some(texture_registry.block.clone()),
+            unlit: true,
+            ..default()
+        }),
         ..default()
     });
+    commands.spawn(PbrBundle {
+        transform: Transform::from_xyz(-1.0, 2.0, 0.0),
+        mesh: block_models.meshes.get("beehive").unwrap().clone(),
+        material: materials.add(StandardMaterial {
+            base_color_texture: Some(texture_registry.block.clone()),
+            unlit: true,
+            ..default()
+        }),
+        ..default()
+    });
+
+    let camera_and_light_transform =
+        Transform::from_xyz(-3.0, 1.7, -3.0).looking_at(Vec3::new(0.0, 1.0, 0.0), Vec3::Y);
+
+    commands.spawn((
+        FlyCamera::default(),
+        Camera3dBundle {
+            transform: camera_and_light_transform,
+            ..default()
+        },
+    ));
 }

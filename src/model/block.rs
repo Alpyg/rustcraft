@@ -123,17 +123,6 @@ pub fn parse_block_model(models: &HashMap<String, BlockModel>, json: &Value) -> 
                     Direction::East => Vec4::new(from.x, from.y, to.x, to.y),
                 };
             }
-
-            // TODO: Change this for actual coordinate rotation
-            let rotations = face.rotation / 90;
-            if rotations > 0 {
-                let mut uv: [f32; 4] = [0.0; 4];
-                face.uv.write_to_slice(&mut uv);
-
-                uv.rotate_right(rotations as usize);
-
-                face.uv = Vec4::from_slice(&uv);
-            }
         }
         model.elements.push(element);
     }
@@ -170,6 +159,47 @@ pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegist
     mesh_with_transform(&mesh, &Transform::from_scale(Vec3::splat(1.0 / 16.0))).unwrap()
 }
 
+fn get_texture_rect(
+    face_texture: &str,
+    model_textures: &HashMap<String, String>,
+    texture_registry: &Res<TextureRegistry>,
+) -> Rect {
+    let texture_name_dbg = "debug".to_owned();
+    let mut texture_name = model_textures
+        .get(face_texture)
+        .unwrap_or(&texture_name_dbg);
+    while texture_name.starts_with("#") {
+        match model_textures.get(&texture_name.clone().split_off(1)) {
+            Some(texture) => {
+                if texture == texture_name {
+                    texture_name = &texture_name_dbg;
+                    break;
+                } else {
+                    texture_name = texture;
+                }
+            }
+            None => texture_name = &texture_name_dbg,
+        }
+    }
+
+    let texture_name = texture_name.split("/").last().unwrap();
+    let texture_id = &texture_registry
+        .textures
+        .get(&format!("minecraft:block/{}", texture_name))
+        .unwrap_or(
+            texture_registry
+                .textures
+                .get(&"minecraft:block/debug".to_string())
+                .unwrap(),
+        )
+        .0;
+    let texture_index = texture_registry
+        .block_layout
+        .get_texture_index(texture_id)
+        .unwrap();
+    texture_registry.block_layout.textures[texture_index]
+}
+
 fn create_element_mesh(
     el: &ModelElement,
     model_textures: &HashMap<String, String>,
@@ -184,28 +214,7 @@ fn create_element_mesh(
 
     for (direction, face) in &el.faces {
         let face_texture = &face.texture.clone().split_off(1);
-
-        let texture_name_dbg = "/debug".to_owned();
-        let texture_name = model_textures
-            .get(face_texture)
-            .unwrap_or(&texture_name_dbg);
-        let texture_name = texture_name.split("/").last().unwrap();
-
-        let texture_id = &texture_registry
-            .textures
-            .get(&format!("minecraft:block/{}", texture_name))
-            .unwrap_or(
-                texture_registry
-                    .textures
-                    .get(&"minecraft:block/debug".to_string())
-                    .unwrap(),
-            )
-            .0;
-        let texture_index = texture_registry
-            .block_layout
-            .get_texture_index(texture_id)
-            .unwrap();
-        let texture_rect = texture_registry.block_layout.textures[texture_index];
+        let texture_rect = get_texture_rect(face_texture, model_textures, texture_registry);
 
         let (uv_min, uv_max) = (
             (texture_rect.min + face.uv.xy() + Vec2::splat(0.0001)) / 1024.0,
@@ -213,6 +222,8 @@ fn create_element_mesh(
         );
 
         let v_len = vertices.len();
+
+        let mut uv: Vec<[f32; 2]> = vec![];
         match direction {
             Direction::Up => {
                 vertices.extend_from_slice(&[
@@ -228,7 +239,7 @@ fn create_element_mesh(
                     [0.0, 1.0, 0.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_min.x, uv_min.y],
                     [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
@@ -249,7 +260,7 @@ fn create_element_mesh(
                     [0.0, -1.0, 0.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_min.x, uv_min.y],
                     [uv_min.x, uv_max.y],
                     [uv_max.x, uv_max.y],
@@ -270,7 +281,7 @@ fn create_element_mesh(
                     [-1.0, 0.0, 0.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
                     [uv_min.x, uv_min.y],
@@ -291,7 +302,7 @@ fn create_element_mesh(
                     [1.0, 0.0, 0.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
                     [uv_min.x, uv_min.y],
@@ -312,7 +323,7 @@ fn create_element_mesh(
                     [0.0, 0.0, -1.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
                     [uv_min.x, uv_min.y],
@@ -333,7 +344,7 @@ fn create_element_mesh(
                     [0.0, 0.0, 1.0],
                 ]);
                 indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uvs.extend_from_slice(&[
+                uv.extend_from_slice(&[
                     [uv_max.x, uv_max.y],
                     [uv_max.x, uv_min.y],
                     [uv_min.x, uv_min.y],
@@ -341,6 +352,12 @@ fn create_element_mesh(
                 ]);
             }
         };
+
+        // TODO: Change this for actual coordinate rotation
+        let rotations = (face.rotation / 90) % 4;
+        uv.rotate_right(rotations as usize);
+
+        uvs.extend_from_slice(&uv);
     }
 
     Mesh::new(

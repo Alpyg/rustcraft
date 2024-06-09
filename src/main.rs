@@ -1,10 +1,15 @@
 use bevy::{
     diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
     prelude::*,
+    window::PresentMode,
 };
-use bevy_editor_pls::EditorPlugin;
+use bevy_editor_pls::{
+    controls::{self, EditorControls},
+    EditorPlugin,
+};
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
 
+use fly_camera::FlyCameraPlugin;
 use model::ModelPlugin;
 use network::NetworkPlugin;
 use player::PlayerPlugin;
@@ -17,6 +22,7 @@ use world::WorldPlugin;
 mod axis;
 mod core;
 mod direction;
+mod fly_camera;
 mod model;
 mod network;
 mod player;
@@ -34,6 +40,7 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Rustcraft".to_owned(),
                     resolution: (720., 480.).into(),
+                    present_mode: PresentMode::AutoNoVsync,
                     ..default()
                 }),
                 ..default()
@@ -44,11 +51,13 @@ fn main() {
         EditorPlugin::default(),
         RapierPhysicsPlugin::<()>::default(),
     ));
+    app.insert_resource(editor_controls());
 
     #[cfg(debug_assertions)]
     app.add_plugins(RapierDebugRenderPlugin::default());
 
     app.add_plugins((
+        FlyCameraPlugin,
         TexturePlugin,
         ModelPlugin,
         RegistryPlugin,
@@ -61,4 +70,19 @@ fn main() {
     app.insert_state(AppState::LoadingTextures);
 
     app.run();
+}
+
+fn editor_controls() -> EditorControls {
+    let mut editor_controls = EditorControls::default_bindings();
+    editor_controls.unbind(controls::Action::PlayPauseEditor);
+
+    editor_controls.insert(
+        controls::Action::PlayPauseEditor,
+        controls::Binding {
+            input: controls::UserInput::Single(controls::Button::Keyboard(KeyCode::Escape)),
+            conditions: vec![controls::BindingCondition::ListeningForText(false)],
+        },
+    );
+
+    editor_controls
 }
