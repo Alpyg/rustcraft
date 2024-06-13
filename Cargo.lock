@@ -3632,6 +3632,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy-inspector-egui 0.24.0",
+ "bimap",
  "byteorder",
  "bytes",
  "cfb8",
@@ -3640,7 +3641,8 @@ dependencies = [
  "indexmap",
  "mem_macros",
  "protocol_derive",
- "thiserror",
+ "serde",
+ "serde_json",
  "uuid",
 ]
 

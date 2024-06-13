@@ -14,7 +14,6 @@ use model::ModelPlugin;
 use network::NetworkPlugin;
 use player::PlayerPlugin;
 use protocol::ProtocolPlugin;
-use registry::RegistryPlugin;
 use state::AppState;
 use texture::TexturePlugin;
 use world::WorldPlugin;
@@ -27,7 +26,6 @@ mod model;
 mod network;
 mod player;
 mod prelude;
-mod registry;
 mod state;
 mod texture;
 mod world;
@@ -60,7 +58,6 @@ fn main() {
         FlyCameraPlugin,
         TexturePlugin,
         ModelPlugin,
-        RegistryPlugin,
         NetworkPlugin,
         ProtocolPlugin,
         PlayerPlugin,

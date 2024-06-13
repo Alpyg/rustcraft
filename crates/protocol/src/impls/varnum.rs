@@ -9,7 +9,19 @@ use crate::{Decode, Encode};
 macro_rules! define_varnum {
     ($name:ident, $type:ty, $container_type:ty, $max_size:literal) => {
         #[derive(
-            Debug, Copy, Clone, PartialOrd, PartialEq, Hash, Ord, Eq, Deref, DerefMut, From, Into,
+            Debug,
+            Default,
+            Copy,
+            Clone,
+            PartialOrd,
+            PartialEq,
+            Hash,
+            Ord,
+            Eq,
+            Deref,
+            DerefMut,
+            From,
+            Into,
         )]
         pub struct $name(pub $type);
 

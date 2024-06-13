@@ -15,6 +15,7 @@ mod impls;
 mod nbt;
 pub mod packets;
 mod plugin;
+mod registry;
 
 pub use decoder::*;
 pub use encoder::*;
@@ -22,6 +23,7 @@ pub use impls::*;
 pub use nbt::*;
 pub use plugin::*;
 use protocol_derive::{define_protocol, Decode, Encode, Packet};
+pub use registry::*;
 
 extern crate self as protocol;
 

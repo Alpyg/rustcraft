@@ -3,12 +3,13 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bytes::Bytes;
 
-use crate::{decoder::PacketDecoder, encoder::PacketEncoder, Decode, Packet};
+use crate::{decoder::PacketDecoder, encoder::PacketEncoder, Decode, Packet, ProtocolRegistries};
 
 pub struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
     fn build(&self, app: &mut App) {
         // TODO: only registser_type and init when connecting to a server
+        app.init_resource::<ProtocolRegistries>();
         app.register_type::<PacketDecoder>();
         app.init_resource::<PacketDecoder>();
         app.register_type::<PacketEncoder>();
