@@ -19,6 +19,7 @@ bevy_rapier3d.workspace = true
 bimap.workspace = true
 bytes.workspace = true
 derive_more.workspace = true
+indexmap.workspace = true
 protocol.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -35,7 +36,7 @@ members = ["crates/*"]
 [workspace.dependencies]
 aes = "0.8.4"
 anyhow = { version = "1.0.86", features = ["backtrace"] }
-bevy = { version = "0.13.2", features = ["dynamic_linking"] }
+bevy = { version = "0.13.2" }
 bevy-inspector-egui = "0.24.0"
 bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls.git", version = "0.8.1" }
 bevy_egui = "0.27.1"
@@ -49,7 +50,7 @@ cfb8 = "0.8.1"
 derive_more = "0.99.17"
 flate2 = "1.0.30"
 heck = "0.5.0"
-indexmap = "2.2.6"
+indexmap = { version = "2.2.6", features = ["serde"] }
 mem_macros = "1.0.1"
 proc-macro2 = "1.0.85"
 quote = "1.0.36"

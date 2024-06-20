@@ -2,12 +2,19 @@ use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::{reflect::Reflect, utils::HashMap};
+use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 use serde::Deserialize;
-use serde_json::Value;
 
 use crate::texture::TextureRegistry;
 use crate::{axis::Axis, direction::Direction};
+
+#[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
+#[reflect(Resource, InspectorOptions)]
+pub struct BlockModelRegistry {
+    pub models: HashMap<String, BlockModel>,
+    pub meshes: HashMap<String, Handle<Mesh>>,
+}
 
 #[derive(Reflect, Deserialize, Debug, Default, Clone)]
 pub struct BlockModel {
@@ -84,12 +91,15 @@ pub enum CullfaceDirection {
     East,
 }
 
-pub fn parse_block_model(models: &HashMap<String, BlockModel>, json: &Value) -> BlockModel {
+pub fn parse_block_model(
+    models: &HashMap<String, BlockModel>,
+    json: &serde_json::Value,
+) -> BlockModel {
     let new_model: BlockModel = serde_json::from_value(json.clone()).unwrap();
 
     let parent = models.get(
         json.get("parent")
-            .unwrap_or(&Value::String("".to_string()))
+            .unwrap_or(&serde_json::Value::String("".to_string()))
             .as_str()
             .unwrap()
             .split("/")
@@ -137,7 +147,6 @@ pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegist
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::new())
     .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<[f32; 2]>::new())
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<[f32; 3]>::new())
     .with_inserted_indices(Indices::U32(Vec::<u32>::new()));
 
     for element in &model.elements {
@@ -159,7 +168,7 @@ pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegist
     mesh_with_transform(&mesh, &Transform::from_scale(Vec3::splat(1.0 / 16.0))).unwrap()
 }
 
-fn get_texture_rect(
+fn get_texture_uv(
     face_texture: &str,
     model_textures: &HashMap<String, String>,
     texture_registry: &Res<TextureRegistry>,
@@ -208,155 +217,94 @@ fn create_element_mesh(
     let (min, max) = (el.from, el.to);
 
     let mut vertices: Vec<[f32; 3]> = vec![];
-    let mut normals: Vec<[f32; 3]> = vec![];
     let mut indices: Vec<u32> = vec![];
     let mut uvs: Vec<[f32; 2]> = vec![];
 
     for (direction, face) in &el.faces {
         let face_texture = &face.texture.clone().split_off(1);
-        let texture_rect = get_texture_rect(face_texture, model_textures, texture_registry);
-
-        let (uv_min, uv_max) = (
-            (texture_rect.min + face.uv.xy() + Vec2::splat(0.0001)) / 1024.0,
-            (texture_rect.min + face.uv.zw() + Vec2::splat(-0.0001)) / 1024.0,
-        );
+        let texture_uv = get_texture_uv(face_texture, model_textures, texture_registry);
 
         let v_len = vertices.len();
-
-        let mut uv: Vec<[f32; 2]> = vec![];
+        let mut v;
         match direction {
             Direction::Up => {
-                vertices.extend_from_slice(&[
+                v = [
                     [min.x, max.y, min.z],
                     [min.x, max.y, max.z],
                     [max.x, max.y, max.z],
                     [max.x, max.y, min.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [0.0, 1.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                ]);
+                ];
             }
             Direction::Down => {
-                vertices.extend_from_slice(&[
+                v = [
                     [min.x, min.y, max.z],
                     [min.x, min.y, min.z],
                     [max.x, min.y, min.z],
                     [max.x, min.y, max.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [0.0, -1.0, 0.0],
-                    [0.0, -1.0, 0.0],
-                    [0.0, -1.0, 0.0],
-                    [0.0, -1.0, 0.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                ]);
+                ];
             }
             Direction::North => {
-                vertices.extend_from_slice(&[
-                    [min.x, min.y, min.z],
-                    [min.x, max.y, min.z],
+                v = [
                     [max.x, max.y, min.z],
                     [max.x, min.y, min.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [-1.0, 0.0, 0.0],
-                    [-1.0, 0.0, 0.0],
-                    [-1.0, 0.0, 0.0],
-                    [-1.0, 0.0, 0.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                ]);
+                    [min.x, min.y, min.z],
+                    [min.x, max.y, min.z],
+                ];
             }
             Direction::South => {
-                vertices.extend_from_slice(&[
-                    [max.x, min.y, max.z],
-                    [max.x, max.y, max.z],
+                v = [
                     [min.x, max.y, max.z],
                     [min.x, min.y, max.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [1.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                ]);
+                    [max.x, min.y, max.z],
+                    [max.x, max.y, max.z],
+                ];
             }
             Direction::East => {
-                vertices.extend_from_slice(&[
-                    [min.x, min.y, max.z],
-                    [min.x, max.y, max.z],
-                    [min.x, max.y, min.z],
-                    [min.x, min.y, min.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [0.0, 0.0, -1.0],
-                    [0.0, 0.0, -1.0],
-                    [0.0, 0.0, -1.0],
-                    [0.0, 0.0, -1.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                ]);
-            }
-            Direction::West => {
-                vertices.extend_from_slice(&[
-                    [max.x, min.y, min.z],
-                    [max.x, max.y, min.z],
+                v = [
                     [max.x, max.y, max.z],
                     [max.x, min.y, max.z],
-                ]);
-                normals.extend_from_slice(&[
-                    [0.0, 0.0, 1.0],
-                    [0.0, 0.0, 1.0],
-                    [0.0, 0.0, 1.0],
-                    [0.0, 0.0, 1.0],
-                ]);
-                indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
-                uv.extend_from_slice(&[
-                    [uv_max.x, uv_max.y],
-                    [uv_max.x, uv_min.y],
-                    [uv_min.x, uv_min.y],
-                    [uv_min.x, uv_max.y],
-                ]);
+                    [max.x, min.y, min.z],
+                    [max.x, max.y, min.z],
+                ];
+            }
+            Direction::West => {
+                v = [
+                    [min.x, max.y, min.z],
+                    [min.x, min.y, min.z],
+                    [min.x, min.y, max.z],
+                    [min.x, max.y, max.z],
+                ];
             }
         };
+        indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
 
-        // TODO: Change this for actual coordinate rotation
-        let rotations = (face.rotation / 90) % 4;
-        uv.rotate_right(rotations as usize);
+        match face.rotation {
+            90 => v.rotate_right(1),
+            180 => v.rotate_left(2),
+            270 => v.rotate_left(1),
+            _ => {}
+        };
 
+        let padding = 0.1;
+        let center = (face.uv.xy() + face.uv.zw()).div_euclid(Vec2::splat(2.0));
+        let mut uv = [
+            face.uv.xy() + (center - face.uv.xy()).signum() * padding,
+            face.uv.xw() + (center - face.uv.xw()).signum() * padding,
+            face.uv.zw() + (center - face.uv.zw()).signum() * padding,
+            face.uv.zy() + (center - face.uv.zy()).signum() * padding,
+        ];
+
+        let uv: Vec<[f32; 2]> = uv
+            .iter_mut()
+            .map(|i: &mut Vec2| {
+                [
+                    (texture_uv.min.x as f32 + i.x) / 1024.0,
+                    (texture_uv.min.y as f32 + i.y) / 1024.0,
+                ]
+            })
+            .collect();
+
+        vertices.extend(v);
         uvs.extend_from_slice(&uv);
     }
 
@@ -365,7 +313,6 @@ fn create_element_mesh(
         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
     .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
     .with_inserted_indices(Indices::U32(indices))
 }

@@ -9,8 +9,8 @@ use bevy_editor_pls::{
 };
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
 
+use block::BlockPlugin;
 use fly_camera::FlyCameraPlugin;
-use model::ModelPlugin;
 use network::NetworkPlugin;
 use player::PlayerPlugin;
 use protocol::ProtocolPlugin;
@@ -19,10 +19,10 @@ use texture::TexturePlugin;
 use world::WorldPlugin;
 
 mod axis;
+mod block;
 mod core;
 mod direction;
 mod fly_camera;
-mod model;
 mod network;
 mod player;
 mod prelude;
@@ -57,7 +57,7 @@ fn main() {
     app.add_plugins((
         FlyCameraPlugin,
         TexturePlugin,
-        ModelPlugin,
+        BlockPlugin,
         NetworkPlugin,
         ProtocolPlugin,
         PlayerPlugin,
