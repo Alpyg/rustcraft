@@ -9,12 +9,6 @@ use serde::{
     Deserialize, Deserializer,
 };
 
-#[derive(Resource, Debug, Default)]
-pub struct BlockStateRegistry {
-    pub block_definitions: HashMap<String, BlockDefinition>,
-    pub blockstate_models: HashMap<i32, Vec<BlockStateModel>>,
-}
-
 #[derive(Deserialize, Debug, Default)]
 pub struct BlockDefinition {
     pub definition: HashMap<String, serde_json::Value>,
@@ -123,8 +117,8 @@ pub struct BlockStateModel {
 #[derive(Deserialize, Debug)]
 pub struct BlockStateMultipart {
     #[serde(deserialize_with = "deserialize_multipart_apply")]
-    apply: Vec<BlockStateModel>,
-    when: Option<BlockStateMultipartWhen>,
+    pub apply: Vec<BlockStateModel>,
+    pub when: Option<BlockStateMultipartWhen>,
 }
 
 #[derive(Deserialize, Debug)]

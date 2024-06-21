@@ -1,19 +1,33 @@
 use std::{collections::VecDeque, fs};
 
 use bevy::{prelude::*, utils::HashMap};
+use bevy_inspector_egui::prelude::*;
 
 use crate::{
-    block::blockstate::BlockStateRegistry, fly_camera::FlyCamera, state::AppState,
+    block::blockstate::BlockStateMultipartWhen, fly_camera::FlyCamera, state::AppState,
     texture::TextureRegistry,
 };
 
 use self::{
-    blockstate::{BlockDefinition, BlockState},
-    model::{build_block_mesh, parse_block_model, BlockModelRegistry},
+    blockstate::{BlockDefinition, BlockState, BlockStateModel},
+    model::{build_block_mesh, parse_block_model, BlockModel},
 };
 
 pub mod blockstate;
 pub mod model;
+
+#[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
+#[reflect(Resource, InspectorOptions)]
+pub struct BlockModelRegistry {
+    pub models: HashMap<String, BlockModel>,
+    pub meshes: HashMap<String, Handle<Mesh>>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct BlockStateRegistry {
+    pub block_definitions: HashMap<String, BlockDefinition>,
+    pub blockstate_models: HashMap<i32, Vec<BlockStateModel>>,
+}
 
 pub struct BlockPlugin;
 impl Plugin for BlockPlugin {
@@ -94,13 +108,14 @@ fn load_states(mut commands: Commands) {
         ))
         .unwrap();
 
-        'state: for (id, state) in &blockstate_definition.states {
+        for (id, state) in &blockstate_definition.states {
+            let mut models = vec![];
             match serde_json::from_str(&data).unwrap() {
                 BlockState::Variants(variants) => {
-                    for (variant_key, variant) in &variants {
+                    'variants: for (variant_key, variant) in &variants {
                         if variant_key.is_empty() {
                             blockstate_models.insert(*id, variant.0.clone());
-                            continue 'state;
+                            break 'variants;
                         }
                         let variant_properties: HashMap<&str, &str> = variant_key
                             .split(',')
@@ -113,19 +128,61 @@ fn load_states(mut commands: Commands) {
                         if variant_properties.iter().all(|(key, value)| {
                             state.properties.get(*key).map_or(false, |v| v == value)
                         }) {
-                            blockstate_models.insert(*id, variant.0.clone());
-                            continue 'state;
+                            models = variant.0.clone();
+                            break 'variants;
                         }
                     }
                 }
                 BlockState::Multipart(multipart) => {
-                    // TODO: Add conditions for multipart and insert id + models vec into resource
+                    for part in multipart {
+                        match part.when {
+                            Some(when) => {
+                                if match when {
+                                    BlockStateMultipartWhen::State(conditions) => conditions
+                                        .iter()
+                                        .all(|(key, value)| match state.properties.get(key) {
+                                            Some(state_value) => {
+                                                value.split('|').any(|v| v == state_value)
+                                            }
+                                            None => false,
+                                        }),
+                                    BlockStateMultipartWhen::Or(conditions) => {
+                                        conditions.iter().any(|conditions| {
+                                            conditions.iter().all(|(key, value)| {
+                                                match state.properties.get(key) {
+                                                    Some(state_value) => {
+                                                        value.split('|').any(|v| v == state_value)
+                                                    }
+                                                    None => false,
+                                                }
+                                            })
+                                        })
+                                    }
+
+                                    BlockStateMultipartWhen::And(conditions) => {
+                                        conditions.iter().all(|conditions| {
+                                            conditions.iter().all(|(key, value)| {
+                                                match state.properties.get(key) {
+                                                    Some(state_value) => {
+                                                        value.split('|').any(|v| v == state_value)
+                                                    }
+                                                    None => false,
+                                                }
+                                            })
+                                        })
+                                    }
+                                } {
+                                    models.extend(part.apply);
+                                }
+                            }
+                            None => models.extend(part.apply),
+                        }
+                    }
                 }
             }
+            blockstate_models.insert(*id, models);
         }
     }
-    println!("{:?}", block_definitions.len());
-    println!("{:?}", blockstate_models.len());
 
     commands.insert_resource(BlockStateRegistry {
         block_definitions,

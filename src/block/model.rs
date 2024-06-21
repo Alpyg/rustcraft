@@ -2,19 +2,11 @@ use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::{reflect::Reflect, utils::HashMap};
-use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 use serde::Deserialize;
 
 use crate::texture::TextureRegistry;
 use crate::{axis::Axis, direction::Direction};
-
-#[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
-#[reflect(Resource, InspectorOptions)]
-pub struct BlockModelRegistry {
-    pub models: HashMap<String, BlockModel>,
-    pub meshes: HashMap<String, Handle<Mesh>>,
-}
 
 #[derive(Reflect, Deserialize, Debug, Default, Clone)]
 pub struct BlockModel {
