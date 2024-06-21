@@ -5,7 +5,7 @@ use crate::{
     define_protocol, Bounded, Decode, Encode, LenPrefixed, Position, RawBytes, VarInt, NBT,
 };
 
-define_protocol!(765 {
+define_protocol!(767 {
     Handshaking {
         Server {
             0x00 Handshake {
@@ -43,11 +43,13 @@ define_protocol!(765 {
                 server_id: Bounded<&'a str, 20>,
                 public_key: LenPrefixed<u8>,
                 verify_token: LenPrefixed<u8>,
+                should_authenticate: bool,
             },
             0x02 LoginSuccess {
                 uuid: Uuid,
                 username: &'a str,
                 properties: LenPrefixed<Property>,
+                strict_error_handing: bool,
             },
             0x03 SetCompression {
                 threshold: VarInt,
@@ -56,6 +58,9 @@ define_protocol!(765 {
                 message_id: VarInt,
                 channel: &'a str,
                 data: RawBytes<'a>,
+            },
+            0x05 CookieRequestLogin {
+                key: &'a str,
             },
         },
         Server {
@@ -73,42 +78,58 @@ define_protocol!(765 {
                 data: Option<Bounded<RawBytes<'a>, 1048576>>,
             },
             0x03 LoginAcknowledged {},
+            0x04 CookieResponseLogin {
+                key: &'a str,
+                payload: Option<LenPrefixed<u8>>,
+            }
         },
     },
 
     Configuration {
         Client {
-            0x00 ClientPluginMessageConfiguration {
-                channel: &'a str, // Ident
-                data: RawBytes<'a>,
+            0x00 CookieRequest {
+                key: &'a str,
             },
-            0x01 DisconnectConfiguration {
+            0x01 ClientPluginMessageConfiguration {
+                channel: &'a str, // Ident
+                data: Bounded<RawBytes<'a>, 1048576>,
+            },
+            0x02 DisconnectConfiguration {
                 reason: &'a str, // Text
             },
-            0x02 FinishConfiguration {},
-            0x03 KeepAliveClientConfiguration {
+            0x03 FinishConfiguration {},
+            0x04 KeepAliveClientConfiguration {
                 id: i64,
             },
-            0x04 PingConfiguration {
+            0x05 PingConfiguration {
                 id: i32,
             },
-            0x05 RegistryData {
+            0x06 ResetChat {},
+            0x07 RegistryData {
                 registry_codec: NBT,
             },
-            0x06 RemoveResourcePackConfiguration {
+            0x08 RemoveResourcePackConfiguration {
                 uuid: Option<Uuid>,
             },
-            0x07 AddResourcePackConfiguration {
+            0x09 AddResourcePackConfiguration {
                 uuid: Uuid,
                 url: &'a str,
                 hash: Bounded<&'a str, 40>,
                 forced: bool,
                 option: Option<String> // Text
             },
-            0x08 FeatureFlags {
+            0x0a StoreCookieConfiguration {
+                key: &'a str,
+                payload: RawBytes<'a>,
+            },
+            0x0b TransferConfiguration {
+                host: &'a str,
+                port: VarInt,
+            },
+            0x0c FeatureFlags {
                 feature_flags: LenPrefixed<String> // Ident
             },
-            0x09 UpdateTagsConfiguration {
+            0x0d UpdateTagsConfiguration {
                 tags: LenPrefixed<TagArray>,
             },
         },
@@ -123,27 +144,35 @@ define_protocol!(765 {
                 enable_text_filtering: bool,
                 allow_server_listings: bool,
             },
-            0x01 PluginMessageConfiguration {
+            0x01 CookieResponseConfiguration {
+                key: &'a str,
+                payload: Option<LenPrefixed<u8>>,
+            },
+            0x02 ServerPluginMessageConfiguration {
                 channel: &'a str, // Ident
                 data: Bounded<RawBytes<'a>, 32767>,
             },
-            0x02 AcknowledgeFinishConfiguration {},
-            0x03 KeepAliveServerConfiguration {
+            0x03 AcknowledgeFinishConfiguration {},
+            0x04 ServerKeepAliveConfiguration {
                 id: i64,
             },
-            0x04 PongConfiguration {
+            0x05 PongConfiguration {
                 id: i32,
             },
-            0x05 ResourcePackResponseConfiguration {
+            0x06 ResourcePackResponseConfiguration {
                 uuid: Uuid,
                 result: ResourcePackResponseConfigurationResult,
+            },
+            0x07 ServerKnownPacks {
+                count: VarInt,
+                known_packs: Vec<KnownPack<'a>>,
             },
         },
     },
 
     Play {
         Client {
-            0x24 KeepAliveClientPlay {
+            0x24 ClientKeepAlivePlay {
                 id: i64,
             },
             0x25 ChunkDataAndUpdateLight {
@@ -192,7 +221,7 @@ define_protocol!(765 {
             0x00 ConfirmTeleport {
                 teleport_id: VarInt,
             },
-            0x15 KeepAliveServerPlay {
+            0x15 ServerKeepAlivePlay {
                 id: i64,
             },
         },
@@ -235,6 +264,13 @@ pub enum ResourcePackResponseConfigurationResult {
     InvalidURL,
     FailedToReload,
     Discarded,
+}
+
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+pub struct KnownPack<'a> {
+    namespace: &'a str,
+    id: &'a str,
+    version: &'a str,
 }
 
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]

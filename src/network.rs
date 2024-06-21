@@ -70,7 +70,7 @@ fn connect(
     // handshake
     encoder
         .append_packet(&Handshake {
-            protocol_version: VarInt(765),
+            protocol_version: VarInt(767),
             host: "localhost",
             port: 25565,
             next: 2,
@@ -99,7 +99,6 @@ fn connect(
     decoder.queue_slice(&buf[0..len]);
 
     let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Clientbound Plugin Message
-    let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Feature Flags
 
     let mut buf = [0; 50000];
     let len = stream.read(&mut buf).unwrap();
@@ -107,7 +106,9 @@ fn connect(
 
     let _pkt_frame = decoder.try_next_packet().unwrap().unwrap(); // Registry Data
 
-    let _pkt_frame = decoder.try_next_packet(); // Update Tags
+    let mut buf = [0; 50000];
+    let len = stream.read(&mut buf).unwrap();
+    decoder.queue_slice(&buf[0..len]);
     let _pkt_frame = decoder.try_next_packet(); // Finish Configuration
 
     encoder

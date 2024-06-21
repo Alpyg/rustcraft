@@ -1,6 +1,7 @@
 use std::fmt;
 
 use bevy::{prelude::*, utils::HashMap};
+use derive_more::{AsRef, Deref, DerefMut};
 use indexmap::IndexMap;
 use serde::{
     de,
@@ -10,26 +11,26 @@ use serde::{
 
 #[derive(Resource, Debug, Default)]
 pub struct BlockStateRegistry {
-    pub block_definition: HashMap<String, BlockDefinition>,
-    pub blockstate: HashMap<i32, BlockState>,
+    pub block_definitions: HashMap<String, BlockDefinition>,
+    pub blockstate_models: HashMap<i32, Vec<BlockStateModel>>,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct BlockDefinition {
-    definition: HashMap<String, serde_json::Value>,
+    pub definition: HashMap<String, serde_json::Value>,
     #[serde(default)]
-    properties: IndexMap<String, Vec<String>>,
+    pub properties: IndexMap<String, Vec<String>>,
     #[serde(deserialize_with = "deserialize_states")]
-    states: HashMap<i32, BlockStateDefinition>,
+    pub states: HashMap<i32, BlockStateDefinition>,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct BlockStateDefinition {
-    id: i32,
+    pub id: i32,
     #[serde(default)]
-    default: bool,
+    pub default: bool,
     #[serde(default)]
-    properties: IndexMap<String, String>,
+    pub properties: IndexMap<String, String>,
 }
 
 fn deserialize_states<'de, D>(
@@ -50,12 +51,14 @@ where
 
 #[derive(Deserialize, Debug)]
 pub enum BlockState {
-    Variant(BlockStateVariant),
-    Multipart(BlockStateMultipart),
+    #[serde(rename = "variants")]
+    Variants(HashMap<String, BlockStateVariant>),
+    #[serde(rename = "multipart")]
+    Multipart(Vec<BlockStateMultipart>),
 }
 
-#[derive(Debug)]
-pub struct BlockStateVariant(Vec<BlockStateModel>);
+#[derive(Debug, Clone, Deref, DerefMut, AsRef)]
+pub struct BlockStateVariant(pub Vec<BlockStateModel>);
 
 impl<'de> Deserialize<'de> for BlockStateVariant {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -104,18 +107,69 @@ impl<'de> Deserialize<'de> for BlockStateVariant {
     }
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct BlockStateModel {
-    model: String,
+    pub model: String,
     #[serde(default)]
-    x: i16,
+    pub x: i16,
     #[serde(default)]
-    y: i16,
+    pub y: i16,
     #[serde(default)]
-    uvlock: bool,
+    pub uvlock: bool,
     #[serde(default)]
-    weight: f32,
+    pub weight: f32,
 }
 
-#[derive(Deserialize, Debug, Default)]
-pub struct BlockStateMultipart {}
+#[derive(Deserialize, Debug)]
+pub struct BlockStateMultipart {
+    #[serde(deserialize_with = "deserialize_multipart_apply")]
+    apply: Vec<BlockStateModel>,
+    when: Option<BlockStateMultipartWhen>,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum BlockStateMultipartWhen {
+    #[serde(rename = "OR")]
+    Or(Vec<HashMap<String, String>>),
+    #[serde(rename = "AND")]
+    And(Vec<HashMap<String, String>>),
+    #[serde(untagged)]
+    State(HashMap<String, String>),
+}
+
+fn deserialize_multipart_apply<'de, D>(deserializer: D) -> Result<Vec<BlockStateModel>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct ApplyVisitor;
+
+    impl<'de> Visitor<'de> for ApplyVisitor {
+        type Value = Vec<BlockStateModel>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a single model or a list of models")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut models = Vec::new();
+            while let Some(model) = seq.next_element()? {
+                models.push(model);
+            }
+            Ok(models)
+        }
+
+        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            let model: BlockStateModel =
+                Deserialize::deserialize(de::value::MapAccessDeserializer::new(map))?;
+            Ok(vec![model])
+        }
+    }
+
+    deserializer.deserialize_any(ApplyVisitor)
+}

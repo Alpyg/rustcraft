@@ -58,10 +58,10 @@ fn main() {
         FlyCameraPlugin,
         TexturePlugin,
         BlockPlugin,
-        NetworkPlugin,
-        ProtocolPlugin,
-        PlayerPlugin,
-        WorldPlugin,
+        //NetworkPlugin,
+        //ProtocolPlugin,
+        //PlayerPlugin,
+        //WorldPlugin,
     ));
 
     app.insert_state(AppState::LoadingTextures);

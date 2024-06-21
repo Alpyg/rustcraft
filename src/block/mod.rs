@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, fs};
 
 use bevy::{prelude::*, utils::HashMap};
-use serde_json::Value;
 
 use crate::{
     block::blockstate::BlockStateRegistry, fly_camera::FlyCamera, state::AppState,
@@ -9,7 +8,7 @@ use crate::{
 };
 
 use self::{
-    blockstate::BlockDefinition,
+    blockstate::{BlockDefinition, BlockState},
     model::{build_block_mesh, parse_block_model, BlockModelRegistry},
 };
 
@@ -36,17 +35,17 @@ fn load_models(
 ) {
     let mut models = HashMap::new();
     let mut meshes = HashMap::new();
-    let blocks_path = "assets/1.20.4/assets/minecraft/models/block";
+    let blocks_path = "assets/assets/minecraft/models/block";
 
     let paths = fs::read_dir(blocks_path).unwrap();
 
-    let mut queue: VecDeque<(String, Value)> = VecDeque::new();
+    let mut queue: VecDeque<(String, serde_json::Value)> = VecDeque::new();
 
     for path in paths {
         let path = path.unwrap().path();
         let file_path = path.to_str().unwrap();
         let json_str = fs::read_to_string(file_path).unwrap();
-        let json_value: Value = serde_json::from_str(&json_str).unwrap();
+        let json_value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
         queue.push_back((
             path.file_stem().unwrap().to_str().unwrap().to_owned(),
@@ -76,7 +75,7 @@ fn load_models(
 
 fn load_states(mut commands: Commands) {
     let data = fs::read_to_string("assets/reports/blocks.json").unwrap();
-    let value: Value = serde_json::from_str(&data).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&data).unwrap();
 
     let block_definitions: HashMap<String, BlockDefinition> =
         serde_json::from_value(value).unwrap();
@@ -87,10 +86,50 @@ fn load_states(mut commands: Commands) {
     // maybe put non cullable faces in one mesh and the cullable ones in a HashMap
     // take neede cullable faces and merge them with the main faces and generate a final mesh on
     // demand
+    let mut blockstate_models = HashMap::new();
+    for (block, blockstate_definition) in block_definitions.iter() {
+        let data = fs::read_to_string(format!(
+            "assets/assets/minecraft/blockstates/{}.json",
+            block.clone().split_off("minecraft:".len())
+        ))
+        .unwrap();
+
+        'state: for (id, state) in &blockstate_definition.states {
+            match serde_json::from_str(&data).unwrap() {
+                BlockState::Variants(variants) => {
+                    for (variant_key, variant) in &variants {
+                        if variant_key.is_empty() {
+                            blockstate_models.insert(*id, variant.0.clone());
+                            continue 'state;
+                        }
+                        let variant_properties: HashMap<&str, &str> = variant_key
+                            .split(',')
+                            .map(|pair| {
+                                let mut iter = pair.split('=');
+                                (iter.next().unwrap(), iter.next().unwrap())
+                            })
+                            .collect();
+
+                        if variant_properties.iter().all(|(key, value)| {
+                            state.properties.get(*key).map_or(false, |v| v == value)
+                        }) {
+                            blockstate_models.insert(*id, variant.0.clone());
+                            continue 'state;
+                        }
+                    }
+                }
+                BlockState::Multipart(multipart) => {
+                    // TODO: Add conditions for multipart and insert id + models vec into resource
+                }
+            }
+        }
+    }
+    println!("{:?}", block_definitions.len());
+    println!("{:?}", blockstate_models.len());
 
     commands.insert_resource(BlockStateRegistry {
-        block_definition: block_definitions,
-        blockstate: HashMap::new(),
+        block_definitions,
+        blockstate_models,
     })
 }
 

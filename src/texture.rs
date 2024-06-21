@@ -28,7 +28,7 @@ impl Plugin for TexturePlugin {
 
 fn load_textures_folder(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(TextureFolder(
-        asset_server.load_folder("1.20.4/assets/minecraft/textures/block"),
+        asset_server.load_folder("assets/minecraft/textures/block"),
     ));
 }
 
