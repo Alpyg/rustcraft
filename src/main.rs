@@ -11,12 +11,12 @@ use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin
 
 use block::BlockPlugin;
 use fly_camera::FlyCameraPlugin;
-use network::NetworkPlugin;
-use player::PlayerPlugin;
-use protocol::ProtocolPlugin;
+//use network::NetworkPlugin;
+//use player::PlayerPlugin;
+//use protocol::ProtocolPlugin;
 use state::AppState;
 use texture::TexturePlugin;
-use world::WorldPlugin;
+//use world::WorldPlugin;
 
 mod axis;
 mod block;

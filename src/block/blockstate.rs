@@ -1,6 +1,6 @@
 use std::fmt;
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::utils::HashMap;
 use derive_more::{AsRef, Deref, DerefMut};
 use indexmap::IndexMap;
 use serde::{
@@ -105,9 +105,9 @@ impl<'de> Deserialize<'de> for BlockStateVariant {
 pub struct BlockStateModel {
     pub model: String,
     #[serde(default)]
-    pub x: i16,
+    pub x: f32,
     #[serde(default)]
-    pub y: i16,
+    pub y: f32,
     #[serde(default)]
     pub uvlock: bool,
     #[serde(default)]

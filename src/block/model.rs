@@ -164,7 +164,7 @@ fn get_texture_uv(
     face_texture: &str,
     model_textures: &HashMap<String, String>,
     texture_registry: &Res<TextureRegistry>,
-) -> Rect {
+) -> URect {
     let texture_name_dbg = "debug".to_owned();
     let mut texture_name = model_textures
         .get(face_texture)
@@ -195,10 +195,10 @@ fn get_texture_uv(
         )
         .0;
     let texture_index = texture_registry
-        .block_layout
+        .block_atlas
         .get_texture_index(texture_id)
         .unwrap();
-    texture_registry.block_layout.textures[texture_index]
+    texture_registry.block_atlas.textures[texture_index]
 }
 
 fn create_element_mesh(
@@ -285,7 +285,6 @@ fn create_element_mesh(
             face.uv.zw() + (center - face.uv.zw()).signum() * padding,
             face.uv.zy() + (center - face.uv.zy()).signum() * padding,
         ];
-
         let uv: Vec<[f32; 2]> = uv
             .iter_mut()
             .map(|i: &mut Vec2| {

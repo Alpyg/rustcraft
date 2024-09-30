@@ -1,10 +1,18 @@
 use std::{collections::VecDeque, fs};
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    render::{
+        mesh::{Indices, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+    },
+    utils::HashMap,
+};
 use bevy_inspector_egui::prelude::*;
+use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 
 use crate::{
-    block::blockstate::BlockStateMultipartWhen, fly_camera::FlyCamera, state::AppState,
+    axis::Axis, block::blockstate::BlockStateMultipartWhen, fly_camera::FlyCamera, state::AppState,
     texture::TextureRegistry,
 };
 
@@ -26,7 +34,7 @@ pub struct BlockModelRegistry {
 #[derive(Resource, Debug, Default)]
 pub struct BlockStateRegistry {
     pub block_definitions: HashMap<String, BlockDefinition>,
-    pub blockstate_models: HashMap<i32, Vec<BlockStateModel>>,
+    pub blockstates_meshes: HashMap<i32, Handle<Mesh>>,
 }
 
 pub struct BlockPlugin;
@@ -87,7 +95,11 @@ fn load_models(
     commands.insert_resource(BlockModelRegistry { models, meshes });
 }
 
-fn load_states(mut commands: Commands) {
+fn load_states(
+    mut commands: Commands,
+    models: Res<BlockModelRegistry>,
+    mut meshes_res: ResMut<Assets<Mesh>>,
+) {
     let data = fs::read_to_string("assets/reports/blocks.json").unwrap();
     let value: serde_json::Value = serde_json::from_str(&data).unwrap();
 
@@ -100,7 +112,7 @@ fn load_states(mut commands: Commands) {
     // maybe put non cullable faces in one mesh and the cullable ones in a HashMap
     // take neede cullable faces and merge them with the main faces and generate a final mesh on
     // demand
-    let mut blockstate_models = HashMap::new();
+    let mut blockstates_meshes = HashMap::new();
     for (block, blockstate_definition) in block_definitions.iter() {
         let data = fs::read_to_string(format!(
             "assets/assets/minecraft/blockstates/{}.json",
@@ -109,14 +121,15 @@ fn load_states(mut commands: Commands) {
         .unwrap();
 
         for (id, state) in &blockstate_definition.states {
-            let mut models = vec![];
+            let mut states = vec![];
             match serde_json::from_str(&data).unwrap() {
                 BlockState::Variants(variants) => {
                     'variants: for (variant_key, variant) in &variants {
                         if variant_key.is_empty() {
-                            blockstate_models.insert(*id, variant.0.clone());
+                            states = variant.0.clone();
                             break 'variants;
                         }
+
                         let variant_properties: HashMap<&str, &str> = variant_key
                             .split(',')
                             .map(|pair| {
@@ -128,7 +141,7 @@ fn load_states(mut commands: Commands) {
                         if variant_properties.iter().all(|(key, value)| {
                             state.properties.get(*key).map_or(false, |v| v == value)
                         }) {
-                            models = variant.0.clone();
+                            states = variant.0.clone();
                             break 'variants;
                         }
                     }
@@ -172,66 +185,82 @@ fn load_states(mut commands: Commands) {
                                         })
                                     }
                                 } {
-                                    models.extend(part.apply);
+                                    states.extend(part.apply);
                                 }
                             }
-                            None => models.extend(part.apply),
+                            None => states.extend(part.apply),
                         }
                     }
                 }
             }
-            blockstate_models.insert(*id, models);
+
+            // TODO: Generate mesh
+            let mut mesh = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+            )
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::new())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<[f32; 2]>::new())
+            .with_inserted_indices(Indices::U32(Vec::<u32>::new()));
+
+            for state in &states {
+                let model_handle = models
+                    .meshes
+                    .get(&state.model.replace("minecraft:block/", ""))
+                    .expect(format!("model {} mesh should be present", &state.model).as_str());
+                let model_mesh = meshes_res.get(model_handle).unwrap().clone();
+
+                let (axis, angle) = if state.x != 0.0 {
+                    (Axis::X, -state.x)
+                } else {
+                    (Axis::Y, -state.y)
+                };
+                let mut transform = Transform::default();
+                transform.rotate_around(
+                    Vec3::splat(0.5),
+                    Quat::from_axis_angle(axis.into(), angle.to_radians()),
+                );
+
+                let model_mesh = mesh_with_transform(&model_mesh, &transform).unwrap();
+
+                mesh_append(&mut mesh, &model_mesh).unwrap();
+            }
+
+            let new_mesh_handle = meshes_res.add(mesh);
+            blockstates_meshes.insert(*id, new_mesh_handle);
         }
     }
 
     commands.insert_resource(BlockStateRegistry {
         block_definitions,
-        blockstate_models,
+        blockstates_meshes,
     })
 }
 
 fn spawn(
     mut commands: Commands,
-    block_models: Res<BlockModelRegistry>,
+    blockstates: Res<BlockStateRegistry>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     texture_registry: Res<TextureRegistry>,
 ) {
+    //for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
+    //    let (x, z) = (state_id / 164, state_id % 164);
+    //    commands.spawn(PbrBundle {
+    //        transform: Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
+    //        mesh: state_mesh_handle.clone(),
+    //        material: materials.add(StandardMaterial {
+    //            base_color_texture: Some(texture_registry.block.clone()),
+    //            alpha_mode: AlphaMode::Mask(0.0),
+    //            unlit: true,
+    //            ..default()
+    //        }),
+    //        ..default()
+    //    });
+    //}
+
     commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(1.0, 0.0, 0.0),
-        mesh: block_models.meshes.get("acacia_stairs").unwrap().clone(),
-        material: materials.add(StandardMaterial {
-            base_color_texture: Some(texture_registry.block.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        }),
-        ..default()
-    });
-    commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(-1.0, 0.0, 0.0),
-        mesh: block_models.meshes.get("piston_head").unwrap().clone(),
-        material: materials.add(StandardMaterial {
-            base_color_texture: Some(texture_registry.block.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        }),
-        ..default()
-    });
-    commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(1.0, 2.0, 0.0),
-        mesh: block_models.meshes.get("lectern").unwrap().clone(),
-        material: materials.add(StandardMaterial {
-            base_color_texture: Some(texture_registry.block.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        }),
-        ..default()
-    });
-    commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(-1.0, 2.0, 0.0),
-        mesh: block_models.meshes.get("beehive").unwrap().clone(),
+        transform: Transform::from_xyz(0.0, 2.0, 0.0),
+        mesh: blockstates.blockstates_meshes.get(&18375).unwrap().clone(),
         material: materials.add(StandardMaterial {
             base_color_texture: Some(texture_registry.block.clone()),
             alpha_mode: AlphaMode::Mask(0.0),

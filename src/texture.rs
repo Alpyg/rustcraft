@@ -10,7 +10,7 @@ pub struct TextureFolder(Handle<LoadedFolder>);
 #[derive(Resource, Debug)]
 pub struct TextureRegistry {
     pub block: Handle<Image>,
-    pub block_layout: TextureAtlasLayout,
+    pub block_atlas: TextureAtlasLayout,
     pub textures: HashMap<String, (Handle<Image>, AssetId<Image>)>,
 }
 
@@ -71,13 +71,13 @@ fn create_texture_atlas(
         }
     }
 
-    let (layout, texture) = texture_atlas_builder.finish().unwrap();
+    let (layout, texture) = texture_atlas_builder.build().unwrap();
     let texture_handle = textures.add(texture);
     texture_atlases.add(layout.clone());
 
     commands.insert_resource(TextureRegistry {
         block: texture_handle,
-        block_layout: layout,
+        block_atlas: layout,
         textures: textures_map,
     });
 
