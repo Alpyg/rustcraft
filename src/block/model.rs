@@ -5,8 +5,10 @@ use bevy::{reflect::Reflect, utils::HashMap};
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 use serde::Deserialize;
 
-use crate::texture::TextureRegistry;
+use crate::texture::TextureAtlas;
 use crate::{axis::Axis, direction::Direction};
+
+use super::Block;
 
 #[derive(Reflect, Deserialize, Debug, Default, Clone)]
 pub struct BlockModel {
@@ -132,7 +134,7 @@ pub fn parse_block_model(
     model
 }
 
-pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegistry>) -> Mesh {
+pub fn build_block_mesh(model: &BlockModel, atlas: &Res<TextureAtlas<Block>>) -> Mesh {
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
@@ -151,7 +153,7 @@ pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegist
             ),
         );
 
-        let element_mesh = create_element_mesh(element, &model.textures, texture_registry);
+        let element_mesh = create_element_mesh(element, &model.textures, atlas);
         let element_mesh = mesh_with_transform(&element_mesh, &transform).unwrap();
 
         mesh_append(&mut mesh, &element_mesh).unwrap();
@@ -160,51 +162,10 @@ pub fn build_block_mesh(model: &BlockModel, texture_registry: &Res<TextureRegist
     mesh_with_transform(&mesh, &Transform::from_scale(Vec3::splat(1.0 / 16.0))).unwrap()
 }
 
-fn get_texture_uv(
-    face_texture: &str,
-    model_textures: &HashMap<String, String>,
-    texture_registry: &Res<TextureRegistry>,
-) -> URect {
-    let texture_name_dbg = "debug".to_owned();
-    let mut texture_name = model_textures
-        .get(face_texture)
-        .unwrap_or(&texture_name_dbg);
-    while texture_name.starts_with("#") {
-        match model_textures.get(&texture_name.clone().split_off(1)) {
-            Some(texture) => {
-                if texture == texture_name {
-                    texture_name = &texture_name_dbg;
-                    break;
-                } else {
-                    texture_name = texture;
-                }
-            }
-            None => texture_name = &texture_name_dbg,
-        }
-    }
-
-    let texture_name = texture_name.split("/").last().unwrap();
-    let texture_id = &texture_registry
-        .textures
-        .get(&format!("minecraft:block/{}", texture_name))
-        .unwrap_or(
-            texture_registry
-                .textures
-                .get(&"minecraft:block/debug".to_string())
-                .unwrap(),
-        )
-        .0;
-    let texture_index = texture_registry
-        .block_atlas
-        .get_texture_index(texture_id)
-        .unwrap();
-    texture_registry.block_atlas.textures[texture_index]
-}
-
 fn create_element_mesh(
     el: &ModelElement,
     model_textures: &HashMap<String, String>,
-    texture_registry: &Res<TextureRegistry>,
+    atlas: &Res<TextureAtlas<Block>>,
 ) -> Mesh {
     let (min, max) = (el.from, el.to);
 
@@ -214,7 +175,7 @@ fn create_element_mesh(
 
     for (direction, face) in &el.faces {
         let face_texture = &face.texture.clone().split_off(1);
-        let texture_uv = get_texture_uv(face_texture, model_textures, texture_registry);
+        let texture_uv = atlas.get_texture_uv(face_texture, model_textures, atlas);
 
         let v_len = vertices.len();
         let mut v;

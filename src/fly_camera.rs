@@ -40,7 +40,7 @@ impl Default for FlyCamera {
 pub struct FlyCameraPlugin;
 impl Plugin for FlyCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(FixedUpdate, (movement, look));
+        app.add_systems(Update, (movement, look));
     }
 }
 
@@ -71,13 +71,13 @@ fn movement(
             Vec3::ZERO
         };
 
-        options.velocity += accel * time.delta_seconds();
+        options.velocity += accel * time.delta_secs();
 
         if options.velocity.length() > options.max_speed {
             options.velocity = options.velocity.normalize() * options.max_speed;
         }
 
-        let delta_friction = friction * time.delta_seconds();
+        let delta_friction = friction * time.delta_secs();
 
         options.velocity =
             if (options.velocity + delta_friction).signum() != options.velocity.signum() {
@@ -104,8 +104,8 @@ fn look(
             return;
         }
 
-        options.yaw -= delta.x * options.sensitivity * time.delta_seconds();
-        options.pitch += delta.y * options.sensitivity * time.delta_seconds();
+        options.yaw -= delta.x * options.sensitivity * time.delta_secs();
+        options.pitch += delta.y * options.sensitivity * time.delta_secs();
 
         options.pitch = options.pitch.clamp(-89.9, 89.9);
 

@@ -1,85 +1,136 @@
+use std::marker::PhantomData;
+
+use anyhow::Result;
 use bevy::{asset::LoadedFolder, prelude::*, utils::HashMap};
-use bevy_inspector_egui::prelude::*;
 
-use crate::state::AppState;
+use crate::{block::Block, AppState};
 
-#[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
-#[reflect(Resource, InspectorOptions)]
-pub struct TextureFolder(Handle<LoadedFolder>);
+#[derive(Resource, Debug, Default)]
+pub struct BlockTextureFolder(Handle<LoadedFolder>);
 
-#[derive(Resource, Debug)]
-pub struct TextureRegistry {
-    pub block: Handle<Image>,
-    pub block_atlas: TextureAtlasLayout,
-    pub textures: HashMap<String, (Handle<Image>, AssetId<Image>)>,
+#[derive(Resource, Debug, Default, Clone)]
+pub struct TextureAtlas<T> {
+    pub texture: Handle<Image>,
+    pub uvs: HashMap<String, URect>,
+    _d: PhantomData<T>,
 }
 
-pub struct TexturePlugin;
-impl Plugin for TexturePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::LoadingTextures), load_textures_folder);
-        app.add_systems(
-            Update,
-            check_textures.run_if(in_state(AppState::LoadingTextures)),
-        );
-        app.add_systems(OnEnter(AppState::ProcessingTextures), create_texture_atlas);
+impl<T> TextureAtlas<T> {
+    pub fn get_texture_uv(
+        &self,
+        face_texture: &str,
+        model_textures: &HashMap<String, String>,
+        atlas: &Res<TextureAtlas<Block>>,
+    ) -> URect {
+        let texture_name_dbg = "debug".to_owned();
+        let mut texture_name = model_textures
+            .get(face_texture)
+            .unwrap_or(&texture_name_dbg);
+        while texture_name.starts_with("#") {
+            match model_textures.get(&texture_name.clone().split_off(1)) {
+                Some(texture) => {
+                    if texture == texture_name {
+                        texture_name = &texture_name_dbg;
+                        break;
+                    } else {
+                        texture_name = texture;
+                    }
+                }
+                None => texture_name = &texture_name_dbg,
+            }
+        }
+
+        let texture_name = texture_name.split("/").last().unwrap();
+        *atlas
+            .uvs
+            .get(&format!("minecraft:block/{}", texture_name))
+            .unwrap_or(atlas.uvs.get(&"minecraft:block/debug".to_owned()).unwrap())
     }
 }
 
-fn load_textures_folder(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(TextureFolder(
-        asset_server.load_folder("assets/minecraft/textures/block"),
+pub fn load_textures(mut commands: Commands, server: Res<AssetServer>) {
+    commands.insert_resource(BlockTextureFolder(
+        server.load_folder("assets/minecraft/textures/block"),
     ));
 }
 
-fn check_textures(
+pub fn check_textures(
     mut next_state: ResMut<NextState<AppState>>,
-    texture_folder: Res<TextureFolder>,
+    block_texture_folder: Res<BlockTextureFolder>,
     mut events: EventReader<AssetEvent<LoadedFolder>>,
 ) {
     for event in events.read() {
-        if event.is_loaded_with_dependencies(&texture_folder.0) {
-            next_state.set(AppState::ProcessingTextures);
+        if event.is_loaded_with_dependencies(&block_texture_folder.0) {
+            next_state.set(AppState::LoadingModels);
         }
     }
 }
-
-fn create_texture_atlas(
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<AppState>>,
-    texture_folder: Res<TextureFolder>,
-    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
+pub fn build_texture_atlases(
+    block_texture_handles: Res<BlockTextureFolder>,
     loaded_folders: Res<Assets<LoadedFolder>>,
-    mut textures: ResMut<Assets<Image>>,
+    mut block_atlas: ResMut<TextureAtlas<Block>>,
+    mut layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
-    let mut texture_atlas_builder = TextureAtlasBuilder::default();
-    let loaded_folder = loaded_folders.get(&texture_folder.0).unwrap();
+    let block_texture_folder = loaded_folders.get(&block_texture_handles.0).unwrap();
 
-    let mut textures_map = HashMap::new();
+    if let Ok((image, uvs)) =
+        build_texture_atlas_from_dir(block_texture_folder, &mut layouts, &mut images)
+    {
+        block_atlas.texture = image;
+        block_atlas.uvs = uvs;
+
+        println!("texture: {:?}", block_atlas.texture);
+        println!("uvs: {:?}", block_atlas.uvs.len());
+    }
+}
+
+fn build_texture_atlas_from_dir(
+    loaded_folder: &LoadedFolder,
+    layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
+    images: &mut ResMut<Assets<Image>>,
+) -> Result<(Handle<Image>, HashMap<String, URect>)> {
+    let mut atlas_builder = TextureAtlasBuilder::default();
+
+    let mut texture_map: HashMap<AssetId<Image>, String> = HashMap::new();
     for handle in loaded_folder.handles.iter() {
         let id = handle.id().typed_unchecked::<Image>();
-        if let Some(texture) = textures.get(id) {
-            texture_atlas_builder.add_texture(Some(id), texture);
-            if textures.get(id).is_some() {
-                let texture_handle = handle.clone().typed_unchecked::<Image>();
-                let file_name = handle.path().unwrap().path().file_stem().unwrap();
-                textures_map.insert(
-                    format!("minecraft:block/{}", file_name.to_str().unwrap()),
-                    (texture_handle.clone(), id),
-                );
-            };
+        if let Some(texture) = images.get(id) {
+            atlas_builder.add_texture(Some(id), texture);
+
+            texture_map.insert(
+                id,
+                format!(
+                    "minecraft:block/{}",
+                    handle
+                        .path()
+                        .unwrap()
+                        .path()
+                        .file_stem()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                ),
+            );
         }
     }
 
-    let (layout, texture) = texture_atlas_builder.build().unwrap();
-    let texture_handle = textures.add(texture);
-    texture_atlases.add(layout.clone());
+    match atlas_builder.build() {
+        Ok((layout, sources, image)) => {
+            let mut uvs: HashMap<String, URect> = HashMap::new();
+            for (asset_id, texture_name) in texture_map {
+                if let Some(&index) = sources.texture_ids.get(&asset_id) {
+                    if let Some(uv) = layout.textures.get(index) {
+                        uvs.insert(texture_name, uv.clone());
+                    }
+                }
+            }
 
-    commands.insert_resource(TextureRegistry {
-        block: texture_handle,
-        block_atlas: layout,
-        textures: textures_map,
-    });
+            layouts.add(layout);
+            let image = images.add(image);
 
-    next_state.set(AppState::LoadingModels);
+            Ok((image, uvs))
+        }
+        Err(error) => Err(error.into()),
+    }
 }

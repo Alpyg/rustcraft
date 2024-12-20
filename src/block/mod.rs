@@ -11,18 +11,18 @@ use bevy::{
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 
-use crate::{
-    axis::Axis, block::blockstate::BlockStateMultipartWhen, fly_camera::FlyCamera, state::AppState,
-    texture::TextureRegistry,
-};
+use crate::{axis::Axis, block::blockstate::BlockStateMultipartWhen, texture::TextureAtlas};
 
 use self::{
-    blockstate::{BlockDefinition, BlockState, BlockStateModel},
+    blockstate::{BlockDefinition, BlockState},
     model::{build_block_mesh, parse_block_model, BlockModel},
 };
 
 pub mod blockstate;
 pub mod model;
+
+#[derive(Debug, Default, Clone)]
+pub struct Block {}
 
 #[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
@@ -37,23 +37,10 @@ pub struct BlockStateRegistry {
     pub blockstates_meshes: HashMap<i32, Handle<Mesh>>,
 }
 
-pub struct BlockPlugin;
-impl Plugin for BlockPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<BlockModelRegistry>();
-        app.add_systems(OnEnter(AppState::LoadingModels), load_models);
-        app.add_systems(
-            OnEnter(AppState::LoadingModels),
-            load_states.after(load_models),
-        );
-        app.add_systems(OnEnter(AppState::LoadingModels), spawn.after(load_states));
-    }
-}
-
-fn load_models(
+pub fn load_models(
     mut commands: Commands,
     mut meshes_res: ResMut<Assets<Mesh>>,
-    texture_registry: Res<TextureRegistry>,
+    atlas: Res<TextureAtlas<Block>>,
 ) {
     let mut models = HashMap::new();
     let mut meshes = HashMap::new();
@@ -85,7 +72,7 @@ fn load_models(
         }
 
         let model = parse_block_model(&models, &value);
-        let mesh = build_block_mesh(&model, &texture_registry);
+        let mesh = build_block_mesh(&model, &atlas);
         let mesh_handle = meshes_res.add(mesh);
 
         models.insert(ident.clone(), model.clone());
@@ -95,7 +82,7 @@ fn load_models(
     commands.insert_resource(BlockModelRegistry { models, meshes });
 }
 
-fn load_states(
+pub fn load_states(
     mut commands: Commands,
     models: Res<BlockModelRegistry>,
     mut meshes_res: ResMut<Assets<Mesh>>,
@@ -194,7 +181,6 @@ fn load_states(
                 }
             }
 
-            // TODO: Generate mesh
             let mut mesh = Mesh::new(
                 PrimitiveTopology::TriangleList,
                 RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
@@ -237,47 +223,33 @@ fn load_states(
     })
 }
 
-fn spawn(
+pub fn spawn_model_test(
     mut commands: Commands,
     blockstates: Res<BlockStateRegistry>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    texture_registry: Res<TextureRegistry>,
+    atlas: Res<TextureAtlas<Block>>,
 ) {
-    //for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
-    //    let (x, z) = (state_id / 164, state_id % 164);
-    //    commands.spawn(PbrBundle {
-    //        transform: Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
-    //        mesh: state_mesh_handle.clone(),
-    //        material: materials.add(StandardMaterial {
-    //            base_color_texture: Some(texture_registry.block.clone()),
-    //            alpha_mode: AlphaMode::Mask(0.0),
-    //            unlit: true,
-    //            ..default()
-    //        }),
+    for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
+        let (x, z) = (state_id / 164, state_id % 164);
+        commands.spawn((
+            Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
+            Mesh3d(state_mesh_handle.clone()),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color_texture: Some(atlas.texture.clone()),
+                alpha_mode: AlphaMode::Mask(0.0),
+                unlit: true,
+                ..default()
+            })),
+        ));
+    }
+
+    //commands.spawn((
+    //    Mesh3d(blockstates.blockstates_meshes.get(&18375).unwrap().clone()),
+    //    MeshMaterial3d(materials.add(StandardMaterial {
+    //        base_color_texture: Some(atlas.texture.clone()),
+    //        alpha_mode: AlphaMode::Mask(0.0),
+    //        unlit: true,
     //        ..default()
-    //    });
-    //}
-
-    commands.spawn(PbrBundle {
-        transform: Transform::from_xyz(0.0, 2.0, 0.0),
-        mesh: blockstates.blockstates_meshes.get(&18375).unwrap().clone(),
-        material: materials.add(StandardMaterial {
-            base_color_texture: Some(texture_registry.block.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        }),
-        ..default()
-    });
-
-    let camera_and_light_transform =
-        Transform::from_xyz(0.5, 1.5, 7.0).looking_at(Vec3::new(0.0, 1.0, 0.0), Vec3::Y);
-
-    commands.spawn((
-        FlyCamera::default(),
-        Camera3dBundle {
-            transform: camera_and_light_transform,
-            ..default()
-        },
-    ));
+    //    })),
+    //));
 }
