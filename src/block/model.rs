@@ -119,12 +119,18 @@ pub fn parse_block_model(
         for (direction, face) in element.faces.iter_mut() {
             if face.uv == Vec4::ZERO {
                 face.uv = match direction {
-                    Direction::Down => Vec4::new(from.x, from.z, to.x, to.z),
-                    Direction::Up => Vec4::new(from.x, from.z, to.x, to.z),
-                    Direction::North => Vec4::new(from.y, from.z, to.y, to.z),
-                    Direction::South => Vec4::new(from.y, from.z, to.y, to.z),
-                    Direction::West => Vec4::new(from.x, from.y, to.x, to.y),
-                    Direction::East => Vec4::new(from.x, from.y, to.x, to.y),
+                    Direction::Up => {
+                        Vec4::new(16.0 - to.x, 16.0 - to.z, 16.0 - from.x, 16.0 - from.z)
+                    }
+                    Direction::Down => Vec4::new(from.x, 16.0 - to.z, to.x, 16.0 - from.z),
+                    Direction::North => {
+                        Vec4::new(16.0 - to.x, 16.0 - to.y, 16.0 - from.x, 16.0 - from.y)
+                    }
+                    Direction::South => Vec4::new(from.x, 16.0 - to.y, to.x, 16.0 - from.y),
+                    Direction::East => {
+                        Vec4::new(16.0 - to.z, 16.0 - to.y, 16.0 - from.z, 16.0 - from.y)
+                    }
+                    Direction::West => Vec4::new(from.z, 16.0 - to.y, to.z, 16.0 - from.y),
                 };
             }
         }
@@ -178,56 +184,43 @@ fn create_element_mesh(
         let texture_uv = atlas.get_texture_uv(face_texture, model_textures, atlas);
 
         let v_len = vertices.len();
-        let mut v;
-        match direction {
-            Direction::Up => {
-                v = [
-                    [min.x, max.y, min.z],
-                    [min.x, max.y, max.z],
-                    [max.x, max.y, max.z],
-                    [max.x, max.y, min.z],
-                ];
-            }
-            Direction::Down => {
-                v = [
-                    [min.x, min.y, max.z],
-                    [min.x, min.y, min.z],
-                    [max.x, min.y, min.z],
-                    [max.x, min.y, max.z],
-                ];
-            }
-            Direction::North => {
-                v = [
-                    [max.x, max.y, min.z],
-                    [max.x, min.y, min.z],
-                    [min.x, min.y, min.z],
-                    [min.x, max.y, min.z],
-                ];
-            }
-            Direction::South => {
-                v = [
-                    [min.x, max.y, max.z],
-                    [min.x, min.y, max.z],
-                    [max.x, min.y, max.z],
-                    [max.x, max.y, max.z],
-                ];
-            }
-            Direction::East => {
-                v = [
-                    [max.x, max.y, max.z],
-                    [max.x, min.y, max.z],
-                    [max.x, min.y, min.z],
-                    [max.x, max.y, min.z],
-                ];
-            }
-            Direction::West => {
-                v = [
-                    [min.x, max.y, min.z],
-                    [min.x, min.y, min.z],
-                    [min.x, min.y, max.z],
-                    [min.x, max.y, max.z],
-                ];
-            }
+        let mut v = match direction {
+            Direction::Up => [
+                [min.x, max.y, min.z],
+                [min.x, max.y, max.z],
+                [max.x, max.y, max.z],
+                [max.x, max.y, min.z],
+            ],
+            Direction::Down => [
+                [min.x, min.y, max.z],
+                [min.x, min.y, min.z],
+                [max.x, min.y, min.z],
+                [max.x, min.y, max.z],
+            ],
+            Direction::North => [
+                [max.x, max.y, min.z],
+                [max.x, min.y, min.z],
+                [min.x, min.y, min.z],
+                [min.x, max.y, min.z],
+            ],
+            Direction::South => [
+                [min.x, max.y, max.z],
+                [min.x, min.y, max.z],
+                [max.x, min.y, max.z],
+                [max.x, max.y, max.z],
+            ],
+            Direction::East => [
+                [max.x, max.y, max.z],
+                [max.x, min.y, max.z],
+                [max.x, min.y, min.z],
+                [max.x, max.y, min.z],
+            ],
+            Direction::West => [
+                [min.x, max.y, min.z],
+                [min.x, min.y, min.z],
+                [min.x, min.y, max.z],
+                [min.x, max.y, max.z],
+            ],
         };
         indices.extend(&[0, 1, 2, 0, 2, 3].map(|i| i + v_len as u32));
 
@@ -238,14 +231,7 @@ fn create_element_mesh(
             _ => {}
         };
 
-        let padding = 0.1;
-        let center = (face.uv.xy() + face.uv.zw()).div_euclid(Vec2::splat(2.0));
-        let mut uv = [
-            face.uv.xy() + (center - face.uv.xy()).signum() * padding,
-            face.uv.xw() + (center - face.uv.xw()).signum() * padding,
-            face.uv.zw() + (center - face.uv.zw()).signum() * padding,
-            face.uv.zy() + (center - face.uv.zy()).signum() * padding,
-        ];
+        let mut uv = [face.uv.xy(), face.uv.xw(), face.uv.zw(), face.uv.zy()];
         let uv: Vec<[f32; 2]> = uv
             .iter_mut()
             .map(|i: &mut Vec2| {

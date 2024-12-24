@@ -167,6 +167,7 @@ pub fn load_states(
                                             }
                                             None => false,
                                         }),
+
                                     BlockStateMultipartWhen::Or(conditions) => {
                                         conditions.iter().any(|conditions| {
                                             conditions.iter().all(|(key, value)| {

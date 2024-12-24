@@ -8,7 +8,7 @@ use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin
 use block::{Block, BlockStateRegistry, BlocksPlugin};
 use fly_camera::{FlyCamera, FlyCameraPlugin};
 use iyes_progress::ProgressPlugin;
-use texture::{TextureAtlas, *};
+use texture::{TextureAtlas, TexturesPlugin};
 
 mod axis;
 mod block;
@@ -79,6 +79,7 @@ fn spawn_camera(mut commands: Commands) {
         FlyCamera::default(),
         Camera3d::default(),
         Transform::from_xyz(0.5, 1.5, 7.0).looking_at(Vec3::new(0.0, 1.0, 0.0), Vec3::Y),
+        Msaa::Off,
     ));
 }
 
@@ -90,29 +91,7 @@ pub fn spawn_model_test(
 ) {
     commands.spawn((
         Transform::from_xyz(0.0, 0.0, 0.0),
-        Mesh3d(blockstates.blockstates_meshes.get(&18450).unwrap().clone()),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(atlas.texture.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        })),
-    ));
-
-    commands.spawn((
-        Transform::from_xyz(2.0, 0.0, 0.0),
-        Mesh3d(blockstates.blockstates_meshes.get(&7929).unwrap().clone()),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(atlas.texture.clone()),
-            alpha_mode: AlphaMode::Mask(0.0),
-            unlit: true,
-            ..default()
-        })),
-    ));
-
-    commands.spawn((
-        Transform::from_xyz(-2.0, 0.0, 0.0),
-        Mesh3d(blockstates.blockstates_meshes.get(&18375).unwrap().clone()),
+        Mesh3d(blockstates.blockstates_meshes.get(&7919).unwrap().clone()),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color_texture: Some(atlas.texture.clone()),
             alpha_mode: AlphaMode::Mask(0.0),

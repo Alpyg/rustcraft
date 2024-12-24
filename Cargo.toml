@@ -39,7 +39,7 @@ aes = "0.8.4"
 anyhow = { version = "1.0.94", features = ["backtrace"] }
 bevy = { version = "0.15.0", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.28.0"
-bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls.git", version = "0.9.0" }
+bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls.git" }
 bevy_mod_mesh_tools = { git = "https://github.com/Alpyg/bevy_mod_mesh_tools" }
 bevy_rapier3d = "0.28.0"
 bimap = "0.6.3"
