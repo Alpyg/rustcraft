@@ -9,6 +9,7 @@ use block::{Block, BlockStateRegistry, BlocksPlugin};
 use fly_camera::{FlyCamera, FlyCameraPlugin};
 use iyes_progress::ProgressPlugin;
 use texture::{TextureAtlas, TexturesPlugin};
+use world::WorldPlugin;
 
 mod axis;
 mod block;
@@ -25,9 +26,8 @@ mod world;
 pub enum AppState {
     LoadingTextures,
     LoadingModels,
-    #[allow(dead_code)]
+    LoadingWorld,
     MainMenu,
-    #[allow(dead_code)]
     InGame,
 }
 
@@ -46,7 +46,8 @@ fn main() {
             .set(ImagePlugin::default_nearest()),
         ProgressPlugin::<AppState>::new()
             .with_state_transition(AppState::LoadingTextures, AppState::LoadingModels)
-            .with_state_transition(AppState::LoadingModels, AppState::InGame),
+            .with_state_transition(AppState::LoadingModels, AppState::LoadingWorld)
+            .with_state_transition(AppState::LoadingWorld, AppState::InGame),
         RapierPhysicsPlugin::<()>::default(),
     ));
 
@@ -57,13 +58,13 @@ fn main() {
         RapierDebugRenderPlugin::default(),
     ));
 
-    app.add_plugins((FlyCameraPlugin, TexturesPlugin, BlocksPlugin));
+    app.add_plugins((FlyCameraPlugin, TexturesPlugin, BlocksPlugin, WorldPlugin));
 
     app.add_systems(
         OnEnter(AppState::InGame),
         (
-            //debug_world,
-            spawn_model_test,
+            //
+            //spawn_model_test,
             spawn_camera,
         )
             .chain(),
@@ -78,7 +79,11 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         FlyCamera::default(),
         Camera3d::default(),
-        Transform::from_xyz(0.5, 1.5, 7.0).looking_at(Vec3::new(0.0, 1.0, 0.0), Vec3::Y),
+        PerspectiveProjection {
+            fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 3.0, 0.0).looking_at(Vec3::new(2.0, 2.0, 2.0), Vec3::Y),
         Msaa::Off,
     ));
 }
@@ -99,25 +104,4 @@ pub fn spawn_model_test(
             ..default()
         })),
     ));
-}
-
-pub fn debug_world(
-    mut commands: Commands,
-    blockstates: Res<BlockStateRegistry>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    atlas: Res<TextureAtlas<Block>>,
-) {
-    for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
-        let (x, z) = (state_id / 164, state_id % 164);
-        commands.spawn((
-            Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
-            Mesh3d(state_mesh_handle.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color_texture: Some(atlas.texture.clone()),
-                alpha_mode: AlphaMode::Mask(0.0),
-                unlit: true,
-                ..default()
-            })),
-        ));
-    }
 }

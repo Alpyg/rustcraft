@@ -11,7 +11,9 @@ use bevy::{
 use bevy_asset_loader::loading_state::{LoadingState, LoadingStateAppExt};
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
+use derive_more::derive::{Deref, DerefMut, From};
 use iyes_progress::{Progress, ProgressReturningSystem};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     axis::Axis, block::blockstate::BlockStateMultipartWhen, texture::TextureAtlas, AppState,
@@ -27,6 +29,11 @@ pub mod model;
 
 #[derive(Debug, Default, Clone)]
 pub struct Block;
+
+#[derive(
+    Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut, From,
+)]
+pub struct BlockId(i32);
 
 #[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
@@ -235,7 +242,7 @@ pub fn load_states(
             }
 
             let new_mesh_handle = meshes_res.add(mesh);
-            blockstates_meshes.insert(*id, new_mesh_handle);
+            blockstates_meshes.insert(*BlockId(*id as i32), new_mesh_handle);
         }
     }
 
