@@ -13,6 +13,7 @@ use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
 use derive_more::derive::{Deref, DerefMut, From};
 use iyes_progress::{Progress, ProgressReturningSystem};
+use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -156,7 +157,9 @@ pub fn load_states(
                         if variant_properties.iter().all(|(key, value)| {
                             state.properties.get(*key).map_or(false, |v| v == value)
                         }) {
-                            states = variant.0.clone();
+                            if let Some(random_variant) = variant.0.choose(&mut thread_rng()) {
+                                states = vec![random_variant.clone()];
+                            }
                             break 'variants;
                         }
                     }
@@ -237,7 +240,6 @@ pub fn load_states(
                 );
 
                 let model_mesh = mesh_with_transform(&model_mesh, &transform).unwrap();
-
                 mesh_append(&mut mesh, &model_mesh).unwrap();
             }
 
