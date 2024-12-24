@@ -8,10 +8,14 @@ use bevy::{
     },
     utils::HashMap,
 };
+use bevy_asset_loader::loading_state::{LoadingState, LoadingStateAppExt};
 use bevy_inspector_egui::prelude::*;
 use bevy_mod_mesh_tools::{mesh_append, mesh_with_transform};
+use iyes_progress::{Progress, ProgressReturningSystem};
 
-use crate::{axis::Axis, block::blockstate::BlockStateMultipartWhen, texture::TextureAtlas};
+use crate::{
+    axis::Axis, block::blockstate::BlockStateMultipartWhen, texture::TextureAtlas, AppState,
+};
 
 use self::{
     blockstate::{BlockDefinition, BlockState},
@@ -22,7 +26,7 @@ pub mod blockstate;
 pub mod model;
 
 #[derive(Debug, Default, Clone)]
-pub struct Block {}
+pub struct Block;
 
 #[derive(Reflect, Resource, InspectorOptions, Debug, Default)]
 #[reflect(Resource, InspectorOptions)]
@@ -35,6 +39,23 @@ pub struct BlockModelRegistry {
 pub struct BlockStateRegistry {
     pub block_definitions: HashMap<String, BlockDefinition>,
     pub blockstates_meshes: HashMap<i32, Handle<Mesh>>,
+}
+
+pub struct BlocksPlugin;
+impl Plugin for BlocksPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_loading_state(LoadingState::new(AppState::LoadingModels))
+            .add_systems(
+                OnEnter(AppState::LoadingModels),
+                (
+                    load_models,
+                    load_states,
+                    load_progress.track_progress::<AppState>(),
+                )
+                    .chain(),
+            )
+            .insert_resource(BlockModelRegistry::default());
+    }
 }
 
 pub fn load_models(
@@ -223,33 +244,6 @@ pub fn load_states(
     })
 }
 
-pub fn spawn_model_test(
-    mut commands: Commands,
-    blockstates: Res<BlockStateRegistry>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    atlas: Res<TextureAtlas<Block>>,
-) {
-    for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
-        let (x, z) = (state_id / 164, state_id % 164);
-        commands.spawn((
-            Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
-            Mesh3d(state_mesh_handle.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color_texture: Some(atlas.texture.clone()),
-                alpha_mode: AlphaMode::Mask(0.0),
-                unlit: true,
-                ..default()
-            })),
-        ));
-    }
-
-    //commands.spawn((
-    //    Mesh3d(blockstates.blockstates_meshes.get(&18375).unwrap().clone()),
-    //    MeshMaterial3d(materials.add(StandardMaterial {
-    //        base_color_texture: Some(atlas.texture.clone()),
-    //        alpha_mode: AlphaMode::Mask(0.0),
-    //        unlit: true,
-    //        ..default()
-    //    })),
-    //));
+fn load_progress() -> Progress {
+    true.into()
 }

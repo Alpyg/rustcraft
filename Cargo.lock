@@ -715,6 +715,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_asset_loader"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d806c255faca43ace03fe99889dd322e295a55ed4dd478a5d8ea6efe523158fe"
+dependencies = [
+ "anyhow",
+ "bevy 0.15.0",
+ "bevy_asset_loader_derive",
+ "iyes_progress",
+ "path-slash",
+]
+
+[[package]]
+name = "bevy_asset_loader_derive"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b758b06fa9ec729c925f1fc256b503ca438f1ea345636af362b5fae71f5d8868"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
 name = "bevy_asset_macros"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4075,6 +4099,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
+name = "iyes_progress"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1e21ef918f00c8b44adbfd9aeefaab5c22db4bbaa8c5be4376c5404a241777c"
+dependencies = [
+ "bevy_app 0.15.0",
+ "bevy_asset 0.15.0",
+ "bevy_ecs 0.15.0",
+ "bevy_state 0.15.0",
+ "bevy_utils 0.15.0",
+ "crossbeam-channel",
+ "derive_more",
+ "parking_lot",
+]
+
+[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5044,6 +5084,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "path-slash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e91099d4268b0e11973f036e885d652fb0b21fedcf69738c627f94db6a44f42"
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5538,6 +5584,7 @@ dependencies = [
  "anyhow",
  "bevy 0.15.0",
  "bevy-inspector-egui 0.28.0",
+ "bevy_asset_loader",
  "bevy_editor_pls",
  "bevy_mod_mesh_tools",
  "bevy_rapier3d",
@@ -5545,6 +5592,7 @@ dependencies = [
  "bytes",
  "derive_more",
  "indexmap",
+ "iyes_progress",
  "protocol",
  "serde",
  "serde_json",

@@ -5,13 +5,10 @@ use bevy::{
 };
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
 
-use block::{load_models, load_states, spawn_model_test, Block, BlockModelRegistry};
+use block::{Block, BlockStateRegistry, BlocksPlugin};
 use fly_camera::{FlyCamera, FlyCameraPlugin};
-//use network::NetworkPlugin;
-//use player::PlayerPlugin;
-//use protocol::ProtocolPlugin;
-use texture::{build_texture_atlases, check_textures, load_textures, TextureAtlas};
-//use world::WorldPlugin;
+use iyes_progress::ProgressPlugin;
+use texture::{TextureAtlas, *};
 
 mod axis;
 mod block;
@@ -47,42 +44,29 @@ fn main() {
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),
-        FrameTimeDiagnosticsPlugin,
-        EntityCountDiagnosticsPlugin,
+        ProgressPlugin::<AppState>::new()
+            .with_state_transition(AppState::LoadingTextures, AppState::LoadingModels)
+            .with_state_transition(AppState::LoadingModels, AppState::InGame),
         RapierPhysicsPlugin::<()>::default(),
     ));
 
     #[cfg(debug_assertions)]
-    app.add_plugins(RapierDebugRenderPlugin::default());
-
-    app.insert_resource(TextureAtlas::<Block>::default());
-    app.insert_resource(BlockModelRegistry::default());
-
     app.add_plugins((
-        FlyCameraPlugin,
-        //NetworkPlugin,
-        //ProtocolPlugin,
-        //PlayerPlugin,
-        //WorldPlugin,
-    ))
-    .add_systems(OnEnter(AppState::LoadingTextures), load_textures)
-    .add_systems(
-        Update,
-        (check_textures).run_if(in_state(AppState::LoadingTextures)),
-    )
-    .add_systems(
-        OnEnter(AppState::LoadingModels),
+        FrameTimeDiagnosticsPlugin,
+        EntityCountDiagnosticsPlugin,
+        RapierDebugRenderPlugin::default(),
+    ));
+
+    app.add_plugins((FlyCameraPlugin, TexturesPlugin, BlocksPlugin));
+
+    app.add_systems(
+        OnEnter(AppState::InGame),
         (
-            build_texture_atlases,
-            load_models,
-            load_states,
-            |mut commands: Commands| commands.set_state(AppState::InGame),
+            //debug_world,
+            spawn_model_test,
+            spawn_camera,
         )
             .chain(),
-    )
-    .add_systems(
-        OnEnter(AppState::InGame),
-        (spawn_model_test, spawn_camera).chain(),
     );
 
     app.insert_state(AppState::LoadingTextures);
@@ -96,4 +80,65 @@ fn spawn_camera(mut commands: Commands) {
         Camera3d::default(),
         Transform::from_xyz(0.5, 1.5, 7.0).looking_at(Vec3::new(0.0, 1.0, 0.0), Vec3::Y),
     ));
+}
+
+pub fn spawn_model_test(
+    mut commands: Commands,
+    blockstates: Res<BlockStateRegistry>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    atlas: Res<TextureAtlas<Block>>,
+) {
+    commands.spawn((
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Mesh3d(blockstates.blockstates_meshes.get(&18450).unwrap().clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color_texture: Some(atlas.texture.clone()),
+            alpha_mode: AlphaMode::Mask(0.0),
+            unlit: true,
+            ..default()
+        })),
+    ));
+
+    commands.spawn((
+        Transform::from_xyz(2.0, 0.0, 0.0),
+        Mesh3d(blockstates.blockstates_meshes.get(&7929).unwrap().clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color_texture: Some(atlas.texture.clone()),
+            alpha_mode: AlphaMode::Mask(0.0),
+            unlit: true,
+            ..default()
+        })),
+    ));
+
+    commands.spawn((
+        Transform::from_xyz(-2.0, 0.0, 0.0),
+        Mesh3d(blockstates.blockstates_meshes.get(&18375).unwrap().clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color_texture: Some(atlas.texture.clone()),
+            alpha_mode: AlphaMode::Mask(0.0),
+            unlit: true,
+            ..default()
+        })),
+    ));
+}
+
+pub fn debug_world(
+    mut commands: Commands,
+    blockstates: Res<BlockStateRegistry>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    atlas: Res<TextureAtlas<Block>>,
+) {
+    for (state_id, state_mesh_handle) in &blockstates.blockstates_meshes {
+        let (x, z) = (state_id / 164, state_id % 164);
+        commands.spawn((
+            Transform::from_xyz(1.0 + 2.0 * x as f32, 0.0, 1.0 + 2.0 * z as f32),
+            Mesh3d(state_mesh_handle.clone()),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color_texture: Some(atlas.texture.clone()),
+                alpha_mode: AlphaMode::Mask(0.0),
+                unlit: true,
+                ..default()
+            })),
+        ));
+    }
 }

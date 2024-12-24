@@ -13,6 +13,7 @@ opt-level = 3
 anyhow.workspace = true
 bevy.workspace = true
 bevy-inspector-egui.workspace = true
+bevy_asset_loader = { version = "0.22.0", features = ["progress_tracking"] }
 bevy_editor_pls.workspace = true
 bevy_mod_mesh_tools.workspace = true
 bevy_rapier3d.workspace = true
@@ -20,6 +21,7 @@ bimap.workspace = true
 bytes.workspace = true
 derive_more.workspace = true
 indexmap.workspace = true
+iyes_progress = { version = "0.13.1", features = ["assets", "async"] }
 protocol.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -13,17 +13,17 @@ pub struct FlyCamera {
     pub key_right: KeyCode,
     pub key_backward: KeyCode,
     pub key_forward: KeyCode,
-    pub key_jump: KeyCode,
-    pub key_sneak: KeyCode,
+    pub key_up: KeyCode,
+    pub key_down: KeyCode,
 }
 
 impl Default for FlyCamera {
     fn default() -> Self {
         Self {
-            accel: 1.5,
+            accel: 1.01,
             max_speed: 0.5,
             friction: 1.0,
-            sensitivity: 10.0,
+            sensitivity: 50.0,
             pitch: 0.0,
             yaw: 0.0,
             velocity: Vec3::ZERO,
@@ -31,8 +31,8 @@ impl Default for FlyCamera {
             key_right: KeyCode::KeyF,
             key_backward: KeyCode::KeyD,
             key_forward: KeyCode::KeyE,
-            key_jump: KeyCode::Space,
-            key_sneak: KeyCode::ShiftLeft,
+            key_up: KeyCode::KeyR,
+            key_down: KeyCode::KeyW,
         }
     }
 }
@@ -53,7 +53,7 @@ fn movement(
         let (x, z, y) = (
             movement_axis(&kb, options.key_right, options.key_left),
             movement_axis(&kb, options.key_backward, options.key_forward),
-            movement_axis(&kb, options.key_jump, options.key_sneak),
+            movement_axis(&kb, options.key_up, options.key_down),
         );
 
         let rotation = transform.rotation;
