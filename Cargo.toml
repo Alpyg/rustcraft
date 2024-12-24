@@ -39,7 +39,7 @@ members = ["crates/*"]
 aes = "0.8.4"
 anyhow = { version = "1.0.95", features = ["backtrace"] }
 bevy = { version = "0.15.0", features = ["dynamic_linking"] }
-bevy-inspector-egui = "0.28.0"
+bevy-inspector-egui = "0.28.1"
 bevy_asset_loader = { version = "0.22.0", features = ["progress_tracking"] }
 bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls.git" }
 bevy_mod_mesh_tools = { git = "https://github.com/Alpyg/bevy_mod_mesh_tools" }
@@ -55,11 +55,11 @@ indexmap = { version = "2.7.0", features = ["serde"] }
 iyes_progress = { version = "0.13.1", features = ["assets", "async"] }
 mem_macros = "1.0.1"
 proc-macro2 = "1.0.92"
-quote = "1.0.37"
+quote = "1.0.38"
 rand = "0.8.5"
-serde = { version = "1.0.216", features = ["derive"] }
+serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
-syn = "2.0.91"
+syn = "2.0.94"
 uuid = "1.11.0"
 protocol = { path = "crates/protocol" }
 protocol_derive = { path = "crates/protocol_derive" }

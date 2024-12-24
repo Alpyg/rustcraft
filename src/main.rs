@@ -96,7 +96,7 @@ pub fn spawn_model_test(
 ) {
     commands.spawn((
         Transform::from_xyz(0.0, 0.0, 0.0),
-        Mesh3d(blockstates.blockstates_meshes.get(&7919).unwrap().clone()),
+        Mesh3d(blockstates.meshes.get(&7919).unwrap().clone()),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color_texture: Some(atlas.texture.clone()),
             alpha_mode: AlphaMode::Mask(0.0),

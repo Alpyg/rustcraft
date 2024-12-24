@@ -45,8 +45,8 @@ pub struct BlockModelRegistry {
 
 #[derive(Resource, Debug, Default)]
 pub struct BlockStateRegistry {
-    pub block_definitions: HashMap<String, BlockDefinition>,
-    pub blockstates_meshes: HashMap<i32, Handle<Mesh>>,
+    pub definitions: HashMap<String, BlockDefinition>,
+    pub meshes: HashMap<i32, Handle<Mesh>>,
 }
 
 pub struct BlocksPlugin;
@@ -68,11 +68,11 @@ impl Plugin for BlocksPlugin {
 
 pub fn load_models(
     mut commands: Commands,
-    mut meshes_res: ResMut<Assets<Mesh>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     atlas: Res<TextureAtlas<Block>>,
 ) {
     let mut models = HashMap::new();
-    let mut meshes = HashMap::new();
+    let mut model_meshes = HashMap::new();
     let blocks_path = "assets/assets/minecraft/models/block";
 
     let paths = fs::read_dir(blocks_path).unwrap();
@@ -102,13 +102,16 @@ pub fn load_models(
 
         let model = parse_block_model(&models, &value);
         let mesh = build_block_mesh(&model, &atlas);
-        let mesh_handle = meshes_res.add(mesh);
+        let mesh_handle = meshes.add(mesh);
 
         models.insert(ident.clone(), model.clone());
-        meshes.insert(ident.clone(), mesh_handle);
+        model_meshes.insert(ident.clone(), mesh_handle);
     }
 
-    commands.insert_resource(BlockModelRegistry { models, meshes });
+    commands.insert_resource(BlockModelRegistry {
+        models,
+        meshes: model_meshes,
+    });
 }
 
 pub fn load_states(
@@ -249,8 +252,8 @@ pub fn load_states(
     }
 
     commands.insert_resource(BlockStateRegistry {
-        block_definitions,
-        blockstates_meshes,
+        definitions: block_definitions,
+        meshes: blockstates_meshes,
     })
 }
 
