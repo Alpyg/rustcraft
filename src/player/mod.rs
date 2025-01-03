@@ -1,4 +1,6 @@
+use avian3d::prelude::*;
 use bevy::prelude::*;
+use controls::{survival::SurvivalControls, Acceleration, Velocity};
 use protocol::{
     packets::{
         ClientKeepAlivePlay, ConfirmTeleport, ServerKeepAlivePlay, SynchronizePlayerPosition,
@@ -6,16 +8,67 @@ use protocol::{
     PacketEncoder, PacketEvent,
 };
 
-use crate::core::LocalPlayer;
+use crate::GameLayer;
+
+mod controls;
+
+const PLAYER_HEIGHT: f32 = 1.8;
+const PLAYER_EYE_HEIGHT: f32 = 1.62;
+const PLAYER_WIDTH: f32 = 0.6;
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct PlayerCamera;
 
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_plugins((
+            controls::plugin,
+            //
+        ))
+        .add_systems(Startup, spawn_player)
+        .add_systems(
             Update,
             (handle_keep_alive, handle_syncrhonize_player_position),
         );
     }
+}
+
+fn spawn_player(mut commands: Commands) {
+    let player_transform = Transform::from_xyz(8.0, 8.0, 8.0);
+    commands
+        .spawn((
+            Player,
+            Name::new("Player"),
+            player_transform,
+            Visibility::default(),
+            RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
+            Acceleration::default(),
+            Velocity::default(),
+            SurvivalControls,
+        ))
+        .with_children(|p| {
+            p.spawn((
+                PlayerCamera,
+                Name::new("Player Camera"),
+                player_transform.with_translation(Vec3::new(0.0, PLAYER_EYE_HEIGHT, 0.0)),
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 90.0_f32.to_radians(),
+                    ..default()
+                }),
+            ));
+            p.spawn((
+                Name::new("Player Collider"),
+                player_transform.with_translation(Vec3::new(0.0, PLAYER_HEIGHT / 2.0, 0.0)),
+                Collider::cuboid(PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_WIDTH),
+                CollisionLayers::new(GameLayer::Player, [GameLayer::World]),
+            ));
+        });
 }
 
 fn handle_keep_alive(mut encoder: ResMut<PacketEncoder>, mut pkts: EventReader<PacketEvent>) {
@@ -29,7 +82,7 @@ fn handle_keep_alive(mut encoder: ResMut<PacketEncoder>, mut pkts: EventReader<P
 }
 
 fn handle_syncrhonize_player_position(
-    mut query: Query<&mut Transform, With<LocalPlayer>>,
+    mut query: Query<&mut Transform, With<Player>>,
     mut encoder: ResMut<PacketEncoder>,
     mut pkts: EventReader<PacketEvent>,
 ) {

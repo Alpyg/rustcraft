@@ -1,13 +1,12 @@
-use bevy::{
-    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
-    prelude::*,
-    window::PresentMode,
-};
-use bevy_rapier3d::{plugin::RapierPhysicsPlugin, render::RapierDebugRenderPlugin};
+use avian3d::prelude::*;
+use bevy::{prelude::*, window::PresentMode};
+use bevy_enhanced_input::EnhancedInputPlugin;
 
 use block::{Block, BlockStateRegistry, BlocksPlugin};
+use editor::EditorPlugin;
 use fly_camera::{FlyCamera, FlyCameraPlugin};
 use iyes_progress::ProgressPlugin;
+use player::PlayerPlugin;
 use texture::{TextureAtlas, TexturesPlugin};
 use world::WorldPlugin;
 
@@ -15,6 +14,7 @@ mod axis;
 mod block;
 mod core;
 mod direction;
+mod editor;
 mod fly_camera;
 mod network;
 mod player;
@@ -22,13 +22,23 @@ mod prelude;
 mod texture;
 mod world;
 
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum AppState {
+    #[default]
     LoadingTextures,
     LoadingModels,
     LoadingWorld,
     MainMenu,
     InGame,
+    Pause,
+}
+
+#[derive(PhysicsLayer, Default, Clone, Copy, PartialEq, Eq, Hash)]
+enum GameLayer {
+    #[default]
+    Default,
+    Player,
+    World,
 }
 
 fn main() {
@@ -48,29 +58,33 @@ fn main() {
             .with_state_transition(AppState::LoadingTextures, AppState::LoadingModels)
             .with_state_transition(AppState::LoadingModels, AppState::LoadingWorld)
             .with_state_transition(AppState::LoadingWorld, AppState::InGame),
-        RapierPhysicsPlugin::<()>::default(),
+        PhysicsPlugins::default(),
+        EnhancedInputPlugin,
     ));
 
     #[cfg(debug_assertions)]
-    app.add_plugins((
-        FrameTimeDiagnosticsPlugin,
-        EntityCountDiagnosticsPlugin,
-        RapierDebugRenderPlugin::default(),
-    ));
+    app.add_plugins(EditorPlugin);
 
-    app.add_plugins((FlyCameraPlugin, TexturesPlugin, BlocksPlugin, WorldPlugin));
+    app.add_plugins((
+        TexturesPlugin,
+        BlocksPlugin,
+        WorldPlugin,
+        PlayerPlugin,
+        //FlyCameraPlugin,
+        //
+    ));
 
     app.add_systems(
         OnEnter(AppState::InGame),
         (
+            spawn_model_test,
+            //spawn_camera,
             //
-            //spawn_model_test,
-            spawn_camera,
         )
             .chain(),
     );
 
-    app.insert_state(AppState::LoadingTextures);
+    app.init_state::<AppState>();
 
     app.run();
 }
@@ -95,7 +109,7 @@ pub fn spawn_model_test(
     atlas: Res<TextureAtlas<Block>>,
 ) {
     commands.spawn((
-        Transform::from_xyz(0.0, 0.0, 0.0),
+        Transform::from_xyz(8.0, 4.0, 4.0),
         Mesh3d(blockstates.meshes.get(&7919).unwrap().clone()),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color_texture: Some(atlas.texture.clone()),

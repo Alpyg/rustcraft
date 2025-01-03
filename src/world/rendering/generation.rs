@@ -1,7 +1,9 @@
 use std::ops::Deref;
 
+use avian3d::prelude::*;
 use bevy::{
     asset::RenderAssetUsages,
+    math::U8Vec3,
     prelude::*,
     render::mesh::{Indices, PrimitiveTopology},
 };
@@ -11,6 +13,7 @@ use crate::{
     block::{Block, BlockStateRegistry},
     texture::TextureAtlas,
     world::{chunk::Chunk, World},
+    GameLayer,
 };
 
 pub fn generate_world_meshes(
@@ -52,6 +55,9 @@ pub fn generate_world_meshes(
                 unlit: true,
                 ..default()
             })),
+            RigidBody::Static,
+            ColliderConstructor::TrimeshFromMesh,
+            CollisionLayers::new(GameLayer::World, [LayerMask::ALL]),
         ));
     }
 }
@@ -69,19 +75,19 @@ pub fn generate_flat_chunk() -> Chunk {
     let mut chunk = Chunk::new();
     for x in 0..16 {
         for z in 0..16 {
-            chunk.insert(IVec3::new(x, 0, z), bedrock_id.into());
+            chunk.insert(U8Vec3::new(x, 0, z), bedrock_id.into());
         }
     }
     for x in 0..16 {
         for z in 0..16 {
             for y in 1..3 {
-                chunk.insert(IVec3::new(x, y, z), dirt_id.into());
+                chunk.insert(U8Vec3::new(x, y, z), dirt_id.into());
             }
         }
     }
     for x in 0..16 {
         for z in 0..16 {
-            chunk.insert(IVec3::new(x, 3, z), grass_id.into());
+            chunk.insert(U8Vec3::new(x, 3, z), grass_id.into());
         }
     }
     chunk
